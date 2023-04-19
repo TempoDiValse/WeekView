@@ -10,18 +10,19 @@
         android:id="@+id/weekView"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        app:dayBackgroundColor="#FFFFFF"
         app:eventTextColor="@android:color/white"
-        app:textSize="12sp"
-        app:hourHeight="60dp"
+        app:headerColumnBackground="#ffffffff"
         app:headerColumnPadding="8dp"
         app:headerColumnTextColor="@color/toolbar_text"
+        app:headerRowBackgroundColor="#FFFFFF"
         app:headerRowPadding="12dp"
-        app:columnGap="8dp"
-        app:noOfVisibleDays="3"
-        app:headerRowBackgroundColor="@color/toolbar"
-        app:dayBackgroundColor="#05000000"
+        app:hourHeight="60dp"
+        app:textSize="12sp"
+        app:nowLineColor="@color/accent"
+        app:nowLineThickness="2dp"
         app:todayBackgroundColor="#1848adff"
-        app:headerColumnBackground="#ffffffff"
-        app:todayHeaderTextColor="@color/accent" />
+        app:showNowLine="true"
+        app:eventCornerRadius="5dp" />
 
 </RelativeLayout>

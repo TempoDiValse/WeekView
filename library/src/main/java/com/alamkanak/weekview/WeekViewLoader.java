@@ -20,5 +20,5 @@ public interface WeekViewLoader {
      * @param periodIndex the period to load
      * @return A list with the events of this period
      */
-    List<? extends WeekViewEvent> onLoad(int periodIndex);
+    List<? extends WeekViewEvent> onLoad(int year, int month, int week, int day);
 }

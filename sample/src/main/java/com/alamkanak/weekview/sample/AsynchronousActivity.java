@@ -4,14 +4,12 @@ import android.widget.Toast;
 
 import com.alamkanak.weekview.WeekViewEvent;
 import com.alamkanak.weekview.sample.apiclient.Event;
-import com.alamkanak.weekview.sample.apiclient.MyJsonService;
 
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
 
 import retrofit.Callback;
-import retrofit.RestAdapter;
 import retrofit.RetrofitError;
 import retrofit.client.Response;
 
@@ -25,6 +23,7 @@ public class AsynchronousActivity extends BaseActivity implements Callback<List<
     private List<WeekViewEvent> events = new ArrayList<WeekViewEvent>();
     boolean calledNetwork = false;
 
+    /*
     @Override
     public List<? extends WeekViewEvent> onMonthChange(int newYear, int newMonth) {
 
@@ -48,6 +47,7 @@ public class AsynchronousActivity extends BaseActivity implements Callback<List<
         }
         return matchedEvents;
     }
+    */
 
     /**
      * Checks if an event falls into a specific year and month.
@@ -73,5 +73,10 @@ public class AsynchronousActivity extends BaseActivity implements Callback<List<
     public void failure(RetrofitError error) {
         error.printStackTrace();
         Toast.makeText(this, R.string.async_error, Toast.LENGTH_SHORT).show();
+    }
+
+    @Override
+    public List<? extends WeekViewEvent> onMonthChange(int year, int month, int week, int day) {
+        return null;
     }
 }

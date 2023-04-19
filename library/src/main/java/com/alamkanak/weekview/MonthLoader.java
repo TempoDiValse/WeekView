@@ -17,8 +17,8 @@ public class MonthLoader implements WeekViewLoader {
     }
 
     @Override
-    public List<? extends WeekViewEvent> onLoad(int periodIndex){
-        return mOnMonthChangeListener.onMonthChange(periodIndex / 12, periodIndex % 12 + 1);
+    public List<? extends WeekViewEvent> onLoad(int year, int month, int week, int day){
+        return mOnMonthChangeListener.onMonthChange(year, month, week, day);
     }
 
     public MonthChangeListener getOnMonthChangeListener() {
@@ -36,8 +36,9 @@ public class MonthLoader implements WeekViewLoader {
          * <strong>That's why you can have three times the same event at the same place if you mess up with the configuration</strong>
          * @param newYear : year of the events required by the view.
          * @param newMonth : month of the events required by the view <br/><strong>1 based (not like JAVA API) --> January = 1 and December = 12</strong>.
+         * @param week : asdfasdf
          * @return a list of the events happening <strong>during the specified month</strong>.
          */
-        List<? extends WeekViewEvent> onMonthChange(int newYear, int newMonth);
+        List<? extends WeekViewEvent> onMonthChange(int year, int month, int week, int day);
     }
 }
