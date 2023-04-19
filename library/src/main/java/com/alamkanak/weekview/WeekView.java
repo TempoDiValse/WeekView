@@ -44,10 +44,6 @@ import java.util.Locale;
 
 import static com.alamkanak.weekview.WeekViewUtil.*;
 
-/**
- * Created by Raquib-ul-Alam Kanak on 7/21/2014.
- * Website: http://alamkanak.github.io/
- */
 public class WeekView extends View {
     public enum DayType {
         PAST, TODAY, COMMON, SELECTED
@@ -162,10 +158,11 @@ public class WeekView extends View {
             if (mIsZooming)
                 return true;
 
+            boolean didScrollHorizontal = Math.abs(distanceX) > Math.abs(distanceY);
             switch (mCurrentScrollDirection) {
                 case NONE: {
                     // Allow scrolling only in one direction.
-                    if (Math.abs(distanceX) > Math.abs(distanceY)) {
+                    if (didScrollHorizontal) {
                         if (distanceX > 0) {
                             mCurrentScrollDirection = Direction.LEFT;
                         } else {
@@ -178,14 +175,14 @@ public class WeekView extends View {
                 }
                 case LEFT: {
                     // Change direction if there was enough change.
-                    if (Math.abs(distanceX) > Math.abs(distanceY) && (distanceX < -mScaledTouchSlop)) {
+                    if (didScrollHorizontal && (distanceX < -mScaledTouchSlop)) {
                         mCurrentScrollDirection = Direction.RIGHT;
                     }
                     break;
                 }
                 case RIGHT: {
                     // Change direction if there was enough change.
-                    if (Math.abs(distanceX) > Math.abs(distanceY) && (distanceX > mScaledTouchSlop)) {
+                    if (didScrollHorizontal && (distanceX > mScaledTouchSlop)) {
                         mCurrentScrollDirection = Direction.LEFT;
                     }
                     break;
@@ -502,7 +499,7 @@ public class WeekView extends View {
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
 
-        System.out.println("[onDraw] Corner"+ mEventCornerRadius);
+        System.out.println("[onDraw]");
 
         mHeaderColumnWidth = mTimeTextWidth + mHeaderColumnPadding * 2;
         mHeaderHeight = mHeaderTextHeight + mAllDayEventHeight + mHeaderMarginBottom;
@@ -541,9 +538,16 @@ public class WeekView extends View {
         // 스크롤 상/하 오버스크롤 방지
         mCurrentOrigin.y = Math.max(getHeight() - mHourHeight * 24 - mHeaderHeight - mHeaderRowPadding * 2 - mTimeTextHeight / 2, Math.min(mCurrentOrigin.y, 0));
 
-        int leftDaysWithGaps = (int) -(Math.ceil(mCurrentOrigin.x / mWidthPerDay));
-        float startPixel = mCurrentOrigin.x + mWidthPerDay * leftDaysWithGaps + mHeaderColumnWidth;
+        int standard = (int) -(Math.ceil(mCurrentOrigin.x / mWidthPerDay));
+        float startPixel = mCurrentOrigin.x + mWidthPerDay * standard + mHeaderColumnWidth;
         float holdX = startPixel;
+
+        System.out.println("Day Standard: "+standard);
+        /*
+         for (int dayNumber = standard + 1;
+             dayNumber <= standard + mNumberOfVisibleDays + 1;
+             dayNumber++)
+         */
 
         Calendar today = today();
         Calendar firstDayOfWeek = (Calendar) today.clone();
@@ -555,9 +559,15 @@ public class WeekView extends View {
 
         drawScheduleGrid(canvas, firstDayOfWeek, startPixel);
         for(int drawWhat = DRAW_EACH_EVENT_AREA; drawWhat < 2; drawWhat++){
-            for (int dayOfWeek = Calendar.SUNDAY; dayOfWeek <= Calendar.SATURDAY; dayOfWeek++) {
+            //for (int dayOfWeek = Calendar.SUNDAY; dayOfWeek <= Calendar.SATURDAY; dayOfWeek++) {
+            //    Calendar date = (Calendar) firstDayOfWeek.clone();
+            //    date.set(Calendar.DAY_OF_WEEK, dayOfWeek);
+            for (int dayNumber = standard + 1;
+                 dayNumber <= standard + mNumberOfVisibleDays + 1;
+                 dayNumber++){
+
                 Calendar date = (Calendar) firstDayOfWeek.clone();
-                date.set(Calendar.DAY_OF_WEEK, dayOfWeek);
+                date.add(Calendar.DATE, dayNumber - 1);
 
                 DayType dt = isTodayPast(date)
                         ? DayType.PAST
@@ -604,82 +614,17 @@ public class WeekView extends View {
         if(mEventRects == null) mEventRects = new ArrayList<>();
         else mEventRects.clear();
 
+        List<? extends WeekViewEvent> events = mWeekViewLoader.onLoad(
+                firstDayOfWeek.get(Calendar.YEAR),
+                firstDayOfWeek.get(Calendar.MONTH) + 1,
+                firstDayOfWeek.get(Calendar.WEEK_OF_MONTH),
+                firstDayOfWeek.get(Calendar.DATE));
 
-        /*
-        // If a refresh was requested then reset some variables.
-        if (mRefreshEvents) {
-            mEventRects.clear();
-            mPreviousPeriodEvents = null;
-            mCurrentPeriodEvents = null;
-            mNextPeriodEvents = null;
-            mFetchedPeriod = -1;
-        }
-        */
+        if(events == null) return;
+
         List<EventRect> cached = new ArrayList<>();
 
-        if (mWeekViewLoader != null){
-            if (!isInEditMode()) {
-                List<? extends WeekViewEvent> previousPeriodEvents = null;
-                List<? extends WeekViewEvent> currentPeriodEvents = null;
-                List<? extends WeekViewEvent> nextPeriodEvents = null;
-
-                Calendar lastWeek = (Calendar) firstDayOfWeek.clone();
-                lastWeek.add(Calendar.WEEK_OF_MONTH, -1);
-                Calendar nextWeek = (Calendar) firstDayOfWeek.clone();
-                nextWeek.add(Calendar.WEEK_OF_MONTH, 1);
-
-                if (mPreviousPeriodEvents != null
-                        && mCurrentPeriodEvents != null
-                        && mNextPeriodEvents != null){
-
-                    if (firstDayOfWeek.before(mCurrentWeek)){
-                        currentPeriodEvents = mPreviousPeriodEvents;
-                        nextPeriodEvents = mCurrentPeriodEvents;
-                    } else if (firstDayOfWeek.equals(mCurrentWeek)){
-                        previousPeriodEvents = mPreviousPeriodEvents;
-                        currentPeriodEvents = mCurrentPeriodEvents;
-                        nextPeriodEvents = mNextPeriodEvents;
-                    } else if (firstDayOfWeek.after(mCurrentWeek)){
-                        previousPeriodEvents = mCurrentPeriodEvents;
-                        currentPeriodEvents = mNextPeriodEvents;
-                    }
-                }
-
-                if (currentPeriodEvents == null)
-                    currentPeriodEvents = mWeekViewLoader.onLoad(
-                            firstDayOfWeek.get(Calendar.YEAR),
-                            firstDayOfWeek.get(Calendar.MONTH) + 1,
-                            firstDayOfWeek.get(Calendar.WEEK_OF_MONTH),
-                            firstDayOfWeek.get(Calendar.DATE));
-                if (previousPeriodEvents == null)
-                    previousPeriodEvents = mWeekViewLoader.onLoad(
-                            lastWeek.get(Calendar.YEAR),
-                            lastWeek.get(Calendar.MONTH) + 1,
-                            lastWeek.get(Calendar.WEEK_OF_MONTH),
-                            lastWeek.get(Calendar.DATE)
-                    );
-                if (nextPeriodEvents == null)
-                    nextPeriodEvents = mWeekViewLoader.onLoad(
-                            nextWeek.get(Calendar.YEAR),
-                            nextWeek.get(Calendar.MONTH) + 1,
-                            nextWeek.get(Calendar.WEEK_OF_MONTH),
-                            nextWeek.get(Calendar.DATE)
-                    );
-
-
-                // Clear events.
-                mEventRects.clear();
-                sortAndCacheEvents(previousPeriodEvents, cached);
-                sortAndCacheEvents(currentPeriodEvents, cached);
-                sortAndCacheEvents(nextPeriodEvents, cached);
-
-                mPreviousPeriodEvents = previousPeriodEvents;
-                mCurrentPeriodEvents = currentPeriodEvents;
-                mNextPeriodEvents = nextPeriodEvents;
-
-                mCurrentWeek = (Calendar) firstDayOfWeek.clone();
-            }
-        }
+        sortAndCacheEvents(events, cached);
 
         while (cached.size() > 0) {
             ArrayList<EventRect> er = new ArrayList<>(cached.size());
