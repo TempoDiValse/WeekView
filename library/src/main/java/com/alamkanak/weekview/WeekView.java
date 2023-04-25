@@ -559,9 +559,6 @@ public class WeekView extends View {
 
         drawScheduleGrid(canvas, firstDayOfWeek, startPixel);
         for(int drawWhat = DRAW_EACH_EVENT_AREA; drawWhat < 2; drawWhat++){
-            //for (int dayOfWeek = Calendar.SUNDAY; dayOfWeek <= Calendar.SATURDAY; dayOfWeek++) {
-            //    Calendar date = (Calendar) firstDayOfWeek.clone();
-            //    date.set(Calendar.DAY_OF_WEEK, dayOfWeek);
             for (int dayNumber = standard + 1;
                  dayNumber <= standard + mNumberOfVisibleDays + 1;
                  dayNumber++){

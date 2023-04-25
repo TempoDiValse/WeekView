@@ -34,6 +34,11 @@ public class MainActivity extends AppCompatActivity {
                 startActivity(intent);
             }
         });
+
+        findViewById(R.id.buttonKotlin).setOnClickListener((View v) -> {
+            Intent intent = new Intent(MainActivity.this, KotlinActivity.class);
+            startActivity(intent);
+        });
     }
 
 }

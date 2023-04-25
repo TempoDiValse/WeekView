@@ -5,12 +5,13 @@ repositories {
 }
 
 android {
-    compileSdkVersion 29
+    compileSdk 33
 
     defaultConfig {
         minSdkVersion 14
-        targetSdkVersion 29
+        targetSdkVersion 31
     }
+    namespace 'com.alamkanak.weekview'
 }
 
 dependencies {

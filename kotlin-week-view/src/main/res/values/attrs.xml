@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <declare-styleable name="WeekView">
+        <attr name="android:textSize"></attr>
+
+        <!-- Separator -->
+        <attr name="gridSeparatorColor" format="color"></attr>
+        <attr name="gridSeparatorStrokeWidth" format="dimension"></attr>
+
+        <!-- dayOfWeek -->
+        <attr name="dayOfWeekHeight" format="dimension"></attr>
+        <attr name="dayOfWeekVerticalPadding" format="dimension"></attr>
+        <attr name="dayOfWeekTextSize" format="dimension"></attr>
+        <attr name="dayOfWeekTextColor" format="color"></attr>
+        <attr name="dayOfWeekTodayTextColor" format="color"></attr>
+        <attr name="dayOfWeekSundayTextColor" format="color"></attr>
+        <attr name="dayOfWeekSaturdayTextColor" format="color"></attr>
+
+        <!-- Timeline -->
+        <attr name="timelineRowHeight" format="dimension"></attr>
+        <attr name="timelineTextSize" format="dimension"></attr>
+        <attr name="timelineHorizontalPadding" format="dimension"></attr>
+        <attr name="timeNowColor" format="color"></attr>
+        <attr name="timeNowStrokeWidth" format="dimension"></attr>
+
+        <!-- Allday -->
+        <attr name="allDayEventTextSize" format="dimension"></attr>
+        <attr name="allDayAreaHeight" format="dimension"></attr>
+
+        <!-- Day -->
+        <attr name="dayBackgroundColor" format="color"></attr>
+        <attr name="todayBackgroundColor" format="color"></attr>
+    </declare-styleable>
+</resources>

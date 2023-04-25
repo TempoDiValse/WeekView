@@ -19,5 +19,11 @@
         android:layout_height="wrap_content"
         android:text="@string/title_activity_asynchronous"
         style="@style/Button"/>
+    <Button
+        android:id="@+id/buttonKotlin"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/title_activity_kotlin"
+        style="@style/Button"/>
 
 </LinearLayout>
