@@ -1,97 +1,88 @@
 package kr.lavalse.kweekview.model
 
 import android.graphics.Color
-import kr.lavalse.kweekview.extension.ECalendar.formattedText
-import java.util.*
-import java.util.concurrent.TimeUnit
+import kr.lavalse.kweekview.extension.ELocalDateTime.withTime
+import kr.lavalse.kweekview.extension.ELocalDateTime.toLocalDateTime
+import kr.lavalse.kweekview.extension.ELocalDateTime.toText
+import kr.lavalse.kweekview.extension.ELocalDateTime.toTimeMillis
+import java.time.LocalDateTime
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
-open class WeekEvent {
-    companion object {
-        protected const val DEFAULT_COLOR = "#B2E1FF"
-
-        fun copyDescription(from: WeekEvent) = WeekEvent().apply {
-            id = from.id
-            title = from.title
-            creator = from.creator
-            duty = from.duty
-            inviterType = from.inviterType
-
-            isAllDay = from.isAllDay
-            _color = from._color
-        }
-    }
-
-    private val oid = UUID.randomUUID().toString()
-    val objectId get() = oid
-
+open class WeekEvent: Cloneable {
     var id: String = ""
 
-    var startAt : Calendar? = null
-    var endAt : Calendar? = null
+    var startAt : LocalDateTime? = null
+    var endAt : LocalDateTime? = null
 
-    val startTimeInMillis get() = startAt?.timeInMillis ?: 0L
-    val endTimeInMillis get() = endAt?.timeInMillis ?: 0L
+    val startTimeInMillis get() = startAt?.toTimeMillis() ?: 0L
+    val endTimeInMillis get() = endAt?.toTimeMillis() ?: 0L
 
     val difference get() = abs(endTimeInMillis - startTimeInMillis)
+    val days get() = (difference / (24 * 60 * 60 * 1000f)).roundToInt()
 
     open var title: String = ""
 
     private var isAllDay: Boolean = false
 
-    private var _color: String = DEFAULT_COLOR
-    val backgroundColor get() = Color.parseColor(_color)
+    private var _color: Int = Color.BLACK
 
-    var creator: String = ""
-    var duty: String = ""
-
-    private var canDelete: Boolean = true
-
-    private var canTransformResource: Boolean = false
-    var statusResource: String = ""
-
-    private var isInvited = false
-    var inviterType: String = ""
+    val backgroundColor get() = _color
 
     fun isAllDay() = isAllDay
+    fun setBackgroundColor(code: String){ this._color = Color.parseColor(code) }
+    fun setBackgroundColor(value: Int){ this._color = value }
 
-    fun canDelete() = canDelete
-    fun canTransformResource() = canTransformResource
-
-    fun isInvited() = isInvited
-
-    fun setBackgroundColor(code: String){ this._color = code }
-    fun setStartAndEndDate(startAt: Calendar, endAt: Calendar, isAllDay: Boolean = false){
-        this.isAllDay = isAllDay
-
-        if(isAllDay){
-            with(startAt){
-                set(Calendar.HOUR_OF_DAY, 0)
-                set(Calendar.MINUTE, 0)
-            }
-
-            with(endAt){
-                set(Calendar.HOUR_OF_DAY, 23)
-                set(Calendar.MINUTE, 59)
-                set(Calendar.SECOND, 59)
-            }
-        }
-
-        startAt.set(Calendar.SECOND, 0)
-        endAt.set(Calendar.SECOND, 0)
-
-        this.startAt = startAt
-        this.endAt = endAt
+    fun setStartAndEndDate(start: Long, end: Long){
+        setStartAndEndDate(start.toLocalDateTime(), end.toLocalDateTime())
     }
 
-    override fun equals(other: Any?): Boolean = other?.let { it as WeekEvent; it.id == id } ?: false
+    fun setStartAndEndDate(startAt: LocalDateTime, endAt: LocalDateTime, isAllDay: Boolean = false){
+        this.isAllDay = isAllDay
+
+        var (_start, _end) = startAt to endAt
+
+        if(isAllDay){
+            _start = _start.withTime(0)
+            _end = _end.withTime(23, 59, 59)
+        }else{
+            _start = _start.withSecond(0)
+            _end = _end.withSecond(0)
+        }
+
+        this.startAt = _start
+        this.endAt = _end
+    }
+
+    override fun equals(other: Any?): Boolean = other?.let { it as WeekEvent
+        it.id == id
+            && it.startTimeInMillis == startTimeInMillis
+            && it.endTimeInMillis == endTimeInMillis
+    } ?: false
+
     override fun toString(): String {
-        val start = startAt?.formattedText("yyyy/MM/dd HH:mm") ?: "NULL"
-        val end = endAt?.formattedText("yyyy/MM/dd HH:mm") ?: "NULL"
+        val start = startAt?.toText("yyyy/MM/dd HH:mm") ?: "NULL"
+        val end = endAt?.toText("yyyy/MM/dd HH:mm") ?: "NULL"
 
         return if(!isAllDay()) "($id) $start ~ $end" else "($id-A) $start ~ $end"
     }
 
+    public override fun clone(): WeekEvent
+        = (super.clone() as WeekEvent).also { c ->
+            c.id = id
+            c.title = title
 
+            c.isAllDay = isAllDay
+            c._color = _color
+        }
+
+    override fun hashCode(): Int {
+        var result = id.hashCode()
+        result = 31 * result + (startAt?.hashCode() ?: 0)
+        result = 31 * result + (endAt?.hashCode() ?: 0)
+        result = 31 * result + title.hashCode()
+        result = 31 * result + isAllDay.hashCode()
+        result = 31 * result + _color
+        return result
+    }
 }

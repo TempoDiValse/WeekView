@@ -2,6 +2,14 @@
 <resources>
     <declare-styleable name="WeekView">
         <attr name="android:textSize"></attr>
+        <attr name="cornerRadius" format="dimension"></attr>
+
+        <!-- Event -->
+        <attr name="eventTitlePadding" format="dimension"></attr>
+        <attr name="eventTextColor" format="color"></attr>
+        <attr name="eventTextSize" format="dimension"></attr>
+        <attr name="temporaryEventText" format="string"></attr>
+        <attr name="temporaryEventColor" format="color"></attr>
 
         <!-- Separator -->
         <attr name="gridSeparatorColor" format="color"></attr>
@@ -24,6 +32,7 @@
         <attr name="timeNowStrokeWidth" format="dimension"></attr>
 
         <!-- Allday -->
+        <attr name="allDayEventText" format="string"></attr>
         <attr name="allDayEventTextSize" format="dimension"></attr>
         <attr name="allDayAreaHeight" format="dimension"></attr>
 

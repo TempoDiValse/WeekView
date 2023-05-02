@@ -1,14 +1,29 @@
 package kr.lavalse.kweekview.model
 
-class DummyWeekEvent : WeekEvent() {
-    companion object {
-        private const val DUMMY_EVENT_COLOR = "#FA614F"
-    }
+import kr.lavalse.kweekview.extension.ELocalDateTime.toText
 
+class DummyWeekEvent : WeekEvent() {
     init {
         id = "-1"
-        title = "대면보고"
+    }
 
-        setBackgroundColor(DUMMY_EVENT_COLOR)
+    override fun toString(): String {
+        return "Dummy ${startAt!!.toText("yyyy/MM/dd HH:mm")} ~ ${endAt!!.toText("yyyy/MM/dd HH:mm")}"
+    }
+
+    override fun equals(other: Any?): Boolean
+        = other?.let { it as DummyWeekEvent; it.startAt == startAt && it.endAt == endAt } ?: false
+
+    public override fun clone(): DummyWeekEvent
+        = (super.clone() as DummyWeekEvent).also { c ->
+            c.startAt = startAt
+            c.endAt = endAt
+            c.title = title
+
+            c.setBackgroundColor(backgroundColor)
+        }
+
+    override fun hashCode(): Int {
+        return javaClass.hashCode()
     }
 }

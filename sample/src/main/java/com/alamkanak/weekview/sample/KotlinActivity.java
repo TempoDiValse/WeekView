@@ -5,9 +5,15 @@ import android.os.Bundle;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
+import java.time.DayOfWeek;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.temporal.WeekFields;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
+import java.util.Locale;
 
 import kr.lavalse.kweekview.model.WeekEvent;
 import kr.lavalse.kweekview.WeekView;
@@ -19,7 +25,17 @@ public class KotlinActivity extends AppCompatActivity {
 
         setContentView(R.layout.activity_kotlin);
 
-        ((WeekView) findViewById(R.id.weekView)).setOnWeekChangeListener(new WeekView.OnWeekChangeListener() {
+        ((WeekView) findViewById(R.id.weekView)).setOnWeekChangeListener(new WeekView.OnWeekViewListener() {
+            @Override
+            public void onEmptyEventWillBeAdded(long start, long end) {
+                System.out.println(String.format("%d - %d", start, end));
+            }
+
+            @Override
+            public void onWeekEventSelected(int year, int month, int date, int week, @Nullable WeekEvent event) {
+                System.out.println(event);
+            }
+
             @Nullable
             @Override
             public List<WeekEvent> onWeekChanged(int year, int month, int date, int week) {
@@ -27,80 +43,129 @@ public class KotlinActivity extends AppCompatActivity {
 
                 List<WeekEvent> events = new ArrayList<>();
 
-                // 13:30 ~ 17:30
                 WeekEvent e1 = new WeekEvent();
-                e1.setId("AF001");
+                e1.setId("AF001"+date);
                 e1.setBackgroundColor("#333333");
-                Calendar startAt = Calendar.getInstance();
-                startAt.set(Calendar.WEEK_OF_YEAR, week);
-                startAt.set(Calendar.DAY_OF_WEEK, Calendar.TUESDAY);
-                startAt.set(Calendar.HOUR_OF_DAY, 13);
-                startAt.set(Calendar.MINUTE, 30);
+                e1.setTitle("이벤트 A(13:30 ~ 14:00)");
 
-                Calendar endAt = (Calendar) startAt.clone();
-                endAt.add(Calendar.HOUR_OF_DAY, 1);
-                endAt.set(Calendar.MINUTE, 0);
+                LocalDateTime startAt
+                        = LocalDateTime.of(
+                            LocalDate.of(year, month, date),
+                            LocalTime.of(13, 30, 0))
+                        .with(DayOfWeek.TUESDAY);
+
+                LocalDateTime endAt
+                        = LocalDateTime.of(startAt.toLocalDate(), startAt.toLocalTime())
+                        .plusHours(1)
+                        .withMinute(0);
+
                 e1.setStartAndEndDate(startAt, endAt, false);
-                events.add(e1);
+                //events.add(e1);
 
                 // 15:20 ~ 16:30
                 WeekEvent e2 = new WeekEvent();
-                e2.setId("AF002");
+                e2.setId("AF002"+date);
                 e2.setBackgroundColor("#FA1324");
-                startAt = Calendar.getInstance();
-                startAt.set(Calendar.WEEK_OF_YEAR, week);
-                startAt.set(Calendar.HOUR_OF_DAY, 15);
-                startAt.set(Calendar.DAY_OF_WEEK, Calendar.TUESDAY);
-                startAt.set(Calendar.MINUTE, 20);
-                endAt = (Calendar) startAt.clone();
-                endAt.add(Calendar.HOUR_OF_DAY, 1);
-                endAt.set(Calendar.MINUTE, 30);
+                e2.setTitle("이벤트 B(15:20 ~ 16:30)");
+
+                startAt
+                    = LocalDateTime.of(
+                            LocalDate.of(year, month, date),
+                            LocalTime.of(15, 20, 0)
+                    ).with(DayOfWeek.TUESDAY);
+
+                endAt = LocalDateTime.of(startAt.toLocalDate(), startAt.toLocalTime())
+                        .plusHours(1)
+                        .withMinute(30);
+
                 e2.setStartAndEndDate(startAt, endAt, false);
-                events.add(e2);
+                //events.add(e2);
 
                 // 14:00 ~ 16:00
                 WeekEvent e3 = new WeekEvent();
-                e3.setId("AF003");
+                e3.setId("AF003"+date);
                 e3.setBackgroundColor("#015AEF");
-                startAt = Calendar.getInstance();
-                startAt.set(Calendar.WEEK_OF_YEAR, week);
-                startAt.set(Calendar.HOUR_OF_DAY, 14);
-                startAt.set(Calendar.DAY_OF_WEEK, Calendar.TUESDAY);
-                startAt.set(Calendar.MINUTE, 0);
-                endAt = (Calendar) startAt.clone();
-                endAt.add(Calendar.HOUR_OF_DAY, 14);
-                endAt.set(Calendar.MINUTE, 0);
+                e3.setTitle("이벤트 C(14:00 ~ 16:00)");
+
+                startAt
+                    = LocalDateTime.of(
+                        LocalDate.of(year, month, date),
+                        LocalTime.of(14, 0, 0)
+                    ).with(DayOfWeek.TUESDAY);
+                endAt = LocalDateTime.of(startAt.toLocalDate(), startAt.toLocalTime())
+                        .plusHours(14)
+                        .withMinute(0);
+
                 e3.setStartAndEndDate(startAt, endAt, false);
                 events.add(e3);
 
+                // MON ~ WEDS
                 WeekEvent a1 = new WeekEvent();
-                a1.setId("AF004");
+                a1.setId("AF004"+date);
                 a1.setBackgroundColor("#68F132");
-                startAt = Calendar.getInstance();
-                startAt.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY);
-                endAt = (Calendar) startAt.clone();
-                endAt.add(Calendar.DATE, 2);
+                a1.setTitle("AF004 (MONDAY ~ WEDNESDAY)");
+                startAt
+                    = LocalDateTime.of(
+                            LocalDate.of(year, month, date),
+                            LocalTime.of(0, 0, 0))
+                        .with(DayOfWeek.MONDAY);
+
+                endAt = LocalDateTime.of(startAt.toLocalDate(), startAt.toLocalTime())
+                        .plusDays(2);
+
                 a1.setStartAndEndDate(startAt, endAt, true);
-                events.add(a1);
+                //events.add(a1);
 
+                // TUES ~ WEDS
                 WeekEvent a2 = new WeekEvent();
-                a2.setId("AF005");
+                a2.setId("AF005"+date);
                 a2.setBackgroundColor("#FAF132");
-                startAt = Calendar.getInstance();
-                startAt.set(Calendar.DAY_OF_WEEK, Calendar.TUESDAY);
-                endAt = (Calendar) startAt.clone();
-                endAt.add(Calendar.DATE, 1);
-                a2.setStartAndEndDate(startAt, endAt, true);
-                events.add(a2);
+                a2.setTitle("AF005 (TUESDAY ~ WEDNESDAY)");
 
+                startAt = LocalDateTime.of(LocalDate.of(year, month, date), LocalTime.of(0, 0, 0))
+                        .with(DayOfWeek.TUESDAY);
+                endAt = LocalDateTime.of(startAt.toLocalDate(), startAt.toLocalTime())
+                        .plusDays(1);
+
+                a2.setStartAndEndDate(startAt, endAt, true);
+                //events.add(a2);
+
+                // FRI
                 WeekEvent a3 = new WeekEvent();
-                a3.setId("AF006");
+                a3.setTitle("AF006 (FRIDAY ONLY)");
+                a3.setId("AF006"+date);
                 a3.setBackgroundColor("#FAAA32");
-                startAt = Calendar.getInstance();
-                startAt.set(Calendar.DAY_OF_WEEK, Calendar.FRIDAY);
-                endAt = (Calendar) startAt.clone();
+                startAt = LocalDateTime.of(LocalDate.of(year, month, date), LocalTime.of(0, 0, 0))
+                        .with(DayOfWeek.FRIDAY);
+                endAt = LocalDateTime.of(startAt.toLocalDate(), startAt.toLocalTime());
                 a3.setStartAndEndDate(startAt, endAt, true);
-                events.add(a3);
+                //events.add(a3);
+
+                // SAT ~ MON
+                WeekEvent a4 = new WeekEvent();
+                a4.setTitle("AF007 (SAT ~ MON)");
+                a4.setId("AF007"+date);
+                a4.setBackgroundColor("#FA0032");
+
+                startAt = LocalDateTime.of(LocalDate.of(year, month, date), LocalTime.of(0, 0, 0))
+                        .with(DayOfWeek.SATURDAY);
+                endAt = LocalDateTime.of(startAt.toLocalDate(), startAt.toLocalTime())
+                        .plusDays(2);
+
+                a4.setStartAndEndDate(startAt, endAt, true);
+                //events.add(a4);
+
+                // SUN ~ THUR
+                WeekEvent a5 = new WeekEvent();
+                a5.setTitle("AF008 (SUN ~ THUR)");
+                a5.setId("AF008"+date);
+                a5.setBackgroundColor("#ADFF32");
+                startAt = LocalDateTime.of(LocalDate.of(year, month, date), LocalTime.of(0, 0, 0))
+                        .with(DayOfWeek.SUNDAY);
+                endAt = LocalDateTime.of(startAt.toLocalDate(), startAt.toLocalTime())
+                        .plusDays(4);
+                a5.setStartAndEndDate(startAt, endAt, true);
+                //events.add(a5);
 
                 return events;
             }

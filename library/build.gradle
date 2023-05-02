@@ -8,8 +8,8 @@ android {
     compileSdk 33
 
     defaultConfig {
-        minSdkVersion 14
-        targetSdkVersion 31
+        minSdkVersion 26
+        targetSdkVersion 33
     }
     namespace 'com.alamkanak.weekview'
 }

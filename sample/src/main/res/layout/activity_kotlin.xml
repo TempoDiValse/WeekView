@@ -8,5 +8,6 @@
     <kr.lavalse.kweekview.WeekView
         android:id="@+id/weekView"
         android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+        android:layout_height="match_parent"
+        app:temporaryEventText="[대면보고]" />
 </LinearLayout>
