@@ -8,8 +8,9 @@
         <attr name="eventTitlePadding" format="dimension"></attr>
         <attr name="eventTextColor" format="color"></attr>
         <attr name="eventTextSize" format="dimension"></attr>
-        <attr name="temporaryEventText" format="string"></attr>
-        <attr name="temporaryEventColor" format="color"></attr>
+        <attr name="editEventText" format="string"></attr>
+        <attr name="editEventColor" format="color"></attr>
+        <attr name="pastEventColor" format="color"></attr>
 
         <!-- Separator -->
         <attr name="gridSeparatorColor" format="color"></attr>
@@ -25,7 +26,9 @@
         <attr name="dayOfWeekSaturdayTextColor" format="color"></attr>
 
         <!-- Timeline -->
-        <attr name="timelineRowHeight" format="dimension"></attr>
+        <attr name="hourHeight" format="dimension"></attr>
+        <attr name="hourMinHeight" format="dimension"></attr>
+        <attr name="hourMaxHeight" format="dimension"></attr>
         <attr name="timelineTextSize" format="dimension"></attr>
         <attr name="timelineHorizontalPadding" format="dimension"></attr>
         <attr name="timeNowColor" format="color"></attr>
@@ -39,5 +42,9 @@
         <!-- Day -->
         <attr name="dayBackgroundColor" format="color"></attr>
         <attr name="todayBackgroundColor" format="color"></attr>
+
+        <!-- Highlight -->
+        <attr name="highlightColor" format="color"></attr>
+        <attr name="highlightStrokeWidth" format="dimension"></attr>
     </declare-styleable>
 </resources>

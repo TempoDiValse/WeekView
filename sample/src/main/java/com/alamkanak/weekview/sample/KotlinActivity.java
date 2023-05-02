@@ -1,7 +1,10 @@
 package com.alamkanak.weekview.sample;
 
 import android.os.Bundle;
+import android.view.Menu;
+import android.view.MenuItem;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -9,11 +12,9 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.time.temporal.WeekFields;
+import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.List;
-import java.util.Locale;
 
 import kr.lavalse.kweekview.model.WeekEvent;
 import kr.lavalse.kweekview.WeekView;
@@ -25,7 +26,8 @@ public class KotlinActivity extends AppCompatActivity {
 
         setContentView(R.layout.activity_kotlin);
 
-        ((WeekView) findViewById(R.id.weekView)).setOnWeekChangeListener(new WeekView.OnWeekViewListener() {
+        WeekView view = ((WeekView) findViewById(R.id.weekView));
+        view.setOnWeekChangeListener(new WeekView.OnWeekViewListener() {
             @Override
             public void onEmptyEventWillBeAdded(long start, long end) {
                 System.out.println(String.format("%d - %d", start, end));
@@ -60,7 +62,7 @@ public class KotlinActivity extends AppCompatActivity {
                         .withMinute(0);
 
                 e1.setStartAndEndDate(startAt, endAt, false);
-                //events.add(e1);
+                events.add(e1);
 
                 // 15:20 ~ 16:30
                 WeekEvent e2 = new WeekEvent();
@@ -79,7 +81,7 @@ public class KotlinActivity extends AppCompatActivity {
                         .withMinute(30);
 
                 e2.setStartAndEndDate(startAt, endAt, false);
-                //events.add(e2);
+                events.add(e2);
 
                 // 14:00 ~ 16:00
                 WeekEvent e3 = new WeekEvent();
@@ -114,7 +116,7 @@ public class KotlinActivity extends AppCompatActivity {
                         .plusDays(2);
 
                 a1.setStartAndEndDate(startAt, endAt, true);
-                //events.add(a1);
+                events.add(a1);
 
                 // TUES ~ WEDS
                 WeekEvent a2 = new WeekEvent();
@@ -128,7 +130,7 @@ public class KotlinActivity extends AppCompatActivity {
                         .plusDays(1);
 
                 a2.setStartAndEndDate(startAt, endAt, true);
-                //events.add(a2);
+                events.add(a2);
 
                 // FRI
                 WeekEvent a3 = new WeekEvent();
@@ -139,7 +141,7 @@ public class KotlinActivity extends AppCompatActivity {
                         .with(DayOfWeek.FRIDAY);
                 endAt = LocalDateTime.of(startAt.toLocalDate(), startAt.toLocalTime());
                 a3.setStartAndEndDate(startAt, endAt, true);
-                //events.add(a3);
+                events.add(a3);
 
                 // SAT ~ MON
                 WeekEvent a4 = new WeekEvent();
@@ -153,7 +155,7 @@ public class KotlinActivity extends AppCompatActivity {
                         .plusDays(2);
 
                 a4.setStartAndEndDate(startAt, endAt, true);
-                //events.add(a4);
+                events.add(a4);
 
                 // SUN ~ THUR
                 WeekEvent a5 = new WeekEvent();
@@ -165,10 +167,40 @@ public class KotlinActivity extends AppCompatActivity {
                 endAt = LocalDateTime.of(startAt.toLocalDate(), startAt.toLocalTime())
                         .plusDays(4);
                 a5.setStartAndEndDate(startAt, endAt, true);
-                //events.add(a5);
+                events.add(a5);
 
                 return events;
             }
         });
+
+        view.scrollToCurrent();
+
+
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.main, menu);
+
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
+
+        switch(item.getItemId()){
+            /*
+            case R.id.action_highlight:{
+                WeekView view = ((WeekView) findViewById(R.id.weekView));
+                LocalDate datetime = LocalDate.now()
+                        .with(TemporalAdjusters.nextOrSame(DayOfWeek.FRIDAY));
+
+                //view.showScheduleInsertion(datetime);
+            }
+            break;
+            */
+        }
+
+        return super.onOptionsItemSelected(item);
     }
 }
