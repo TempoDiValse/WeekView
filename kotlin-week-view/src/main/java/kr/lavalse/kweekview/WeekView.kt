@@ -13,6 +13,7 @@ import androidx.interpolator.view.animation.FastOutLinearInInterpolator
 import kr.lavalse.kweekview.extension.ECanvas.drawHalfRoundRect
 import kr.lavalse.kweekview.extension.EContext.toDP
 import kr.lavalse.kweekview.extension.EContext.toSP
+import kr.lavalse.kweekview.extension.ELocalDateTime.visibleDateFrom
 import kr.lavalse.kweekview.extension.ELocalDateTime.isBeforeDay
 import kr.lavalse.kweekview.extension.ELocalDateTime.isSameDay
 import kr.lavalse.kweekview.extension.ELocalDateTime.isSameWeek
@@ -22,6 +23,7 @@ import kr.lavalse.kweekview.extension.ELocalDateTime.toMinuteOfHours
 import kr.lavalse.kweekview.extension.ELocalDateTime.toText
 import kr.lavalse.kweekview.extension.ELocalDateTime.toTimeMillis
 import kr.lavalse.kweekview.extension.ELocalDateTime.weekOfYear
+import kr.lavalse.kweekview.extension.ELocalDateTime.withDayOfWeek
 import kr.lavalse.kweekview.model.DummyWeekEvent
 import kr.lavalse.kweekview.model.WeekEvent
 import kr.lavalse.kweekview.model.WeekRect
@@ -30,6 +32,7 @@ import java.lang.Float.min
 import java.time.*
 import java.time.temporal.TemporalAdjusters
 import java.util.*
+import java.util.concurrent.TimeUnit
 import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.floor
@@ -40,16 +43,16 @@ class WeekView @JvmOverloads constructor(
 ) : View(context, attrs, defStyleAttr) {
     companion object {
         private const val DEFAULT_VISIBLE_DAYS = 7
-        private const val DEFAULT_PRELOAD_WEEK_DATA_RANGE = 3
+        private const val DEFAULT_PRELOAD_WEEK_DATA_RANGE = 1
 
         private const val DEFAULT_TEXT_SIZE = 12f
 
         private const val DEFAULT_GRID_SEPARATOR_COLOR = Color.LTGRAY
         private const val DEFAULT_GRID_SEPARATOR_STROKE_WIDTH = .3f
 
-        private const val DEFAULT_HOUR_HEIGHT = 70f
-        private const val DEFAULT_HOUR_HEIGHT_MIN = 50f
-        private const val DEFAULT_HOUR_HEIGHT_MAX = 90f
+        private const val DEFAULT_HOUR_HEIGHT = 50f
+        private const val DEFAULT_HOUR_HEIGHT_MIN = 30f
+        private const val DEFAULT_HOUR_HEIGHT_MAX = 70f
 
         private const val DEFAULT_TIMELINE_HORIZONTAL_PADDING = 10f
 
@@ -63,15 +66,16 @@ class WeekView @JvmOverloads constructor(
         private const val DEFAULT_DAY_OF_WEEK_SATURDAY_TEXT_COLOR = 0xFF4682F1
 
         private const val DEFAULT_ALLDAY_TEXT = "종일"
-        private const val DEFAULT_ALLDAY_AREA_HEIGHT = 100f
+        private const val DEFAULT_ALLDAY_AREA_HEIGHT = 50f
 
         private const val DEFAULT_DAY_BACKGROUND_COLOR = Color.WHITE
         private const val DEFAULT_TODAY_BACKGROUND_COLOR = 0xFFC7F1FF
         private const val DEFAULT_PAST_EVENT_COLOR = Color.LTGRAY
 
-        private const val DEFAULT_EVENT_CORNER_RADIUS = 15f
+        private const val DEFAULT_EVENT_CORNER_RADIUS = 0f
         private const val DEFAULT_EVENT_TITLE_PADDING = 10f
         private const val DEFAULT_EVENT_TEXT_COLOR = Color.BLACK
+        private const val DEFAULT_EVENT_TEXT_MAX_LINES = 2f
         private const val DEFAULT_TEMPORARY_EVENT_COLOR = 0xFFFA614F
 
         private const val DEFAULT_HIGHLIGHT_COLOR = 0xFF415AEF
@@ -96,7 +100,7 @@ class WeekView @JvmOverloads constructor(
         const val RIGHT = 2
         const val VERTICAL = 3
 
-        const val X_SPEED = .8f
+        const val X_SPEED = .5f
         const val X_AUTO_SCROLL_DURATION = 250
     }
 
@@ -240,7 +244,7 @@ class WeekView @JvmOverloads constructor(
         }
 
         override fun onScroll(e1: MotionEvent, e2: MotionEvent, dx: Float, dy: Float): Boolean {
-            if(isZooming || doPrepareInsertion || isEditMode) return true
+            if(isZooming || isEditMode) return true
 
             val didScrollHorizontal = abs(dx) > abs(dy)
 
@@ -1124,7 +1128,8 @@ class WeekView @JvmOverloads constructor(
             val lineHeight = sl.height / sl.lineCount
 
             if(availHeight >= lineHeight){
-                var availLineCount = availHeight / lineHeight
+                var availLineCount = (availHeight / lineHeight)
+                    .coerceAtMost(DEFAULT_EVENT_TEXT_MAX_LINES)
 
                 do {
                     sl = StaticLayout(
@@ -1347,31 +1352,34 @@ class WeekView @JvmOverloads constructor(
         }
     }
 
-    private fun scrollToNearestOrigin(){
-        var days = origin.x / widthPerDay
-        days = when {
-            currentScrollDirection == Scroll.LEFT -> floor(days)
-            currentScrollDirection == Scroll.RIGHT -> ceil(days)
-            currentFlingDirection != Scroll.NONE -> kotlin.math.round(days)
-            else -> kotlin.math.round(days)
+    private fun scrollToNearestOrigin(animated: Boolean = true){
+        val days = (origin.x / widthPerDay).run {
+            when {
+                currentScrollDirection == Scroll.LEFT -> floor(this)
+                currentScrollDirection == Scroll.RIGHT -> ceil(this)
+                currentFlingDirection != Scroll.NONE -> kotlin.math.round(this)
+                else -> kotlin.math.round(this)
+            }
         }
 
         val nearestOrigin = origin.x - (days * widthPerDay)
         if(nearestOrigin != 0f){
-            scroller.forceFinished(true)
-            scroller.startScroll(
-                origin.x.toInt(), origin.y.toInt(),
-                -nearestOrigin.toInt(), 0,
-                ((abs(nearestOrigin) / widthPerDay) * Scroll.X_AUTO_SCROLL_DURATION).toInt()
-            )
-
-            ViewCompat.postInvalidateOnAnimation(this)
+            scrollOriginTo(-nearestOrigin.toInt(), 0, if(animated) 250 else 0)
         }
 
         with(Scroll.NONE){
             currentScrollDirection = this
             currentFlingDirection = this
         }
+    }
+
+    private fun scrollOriginTo(dx: Int, dy: Int, duration: Int = 250){
+        with(scroller){
+            forceFinished(true)
+            startScroll(origin.x.toInt(), origin.y.toInt(), dx, dy, duration)
+        }
+
+        ViewCompat.postInvalidateOnAnimation(this)
     }
 
     private fun clearEditMode(){
@@ -1401,18 +1409,59 @@ class WeekView @JvmOverloads constructor(
     /**
      * 현재 시각으로 스크롤을 이동하도록 한다.
      */
-    fun scrollToCurrent() {
-        scrollToTime(LocalTime.now().hour)
+    fun scrollToCurrentTime() {
+        scrollToTime(LocalDateTime.now().hour)
     }
 
     /**
      * 해당 시각으로 스크롤을 이동하도록 한다. 해당 메소드를 사용하지 않으면 00시부터 데이터가 디스플레이 된다.
+     *
+     * @param hour 0~23 까지의 시간
+     * @param smoothScroll 스크롤 애니메이션 여부
+     */
+    fun scrollToTime(hour: Int, smoothScroll: Boolean = true){
+        if(!isDrawn){
+            val offset = ((hourHeight * hour) - height)
+
+            origin.y = -offset.toFloat()
+        }else{
+            if(!smoothScroll){
+                val offset = hourHeight * hour
+
+                origin.y = -offset.toFloat()
+
+                invalidate()
+            }else{
+                val dy = origin.y + (hourHeight * hour)
+
+                scrollOriginTo(0, -dy.toInt())
+            }
+        }
+    }
+
+    /**
+     * 스크롤 애니메이션이 없이 시간을 설정하도록 한다.
+     *
+     * @param hour 0~23 까지의 시간
      */
     fun scrollToTime(hour: Int){
-        val offset = (hourHeight * hour) - height
-        origin.y = -offset.toFloat()
+        scrollToTime(hour, false)
+    }
 
-        ViewCompat.postInvalidateOnAnimation(this)
+    fun moveToNext(){
+        val date = current.plusWeeks(1)
+
+        loadSchedules()
+
+        invalidate()
+    }
+
+    fun moveToPrev(){
+        val date = current.minusWeeks(1)
+
+        loadSchedules()
+
+        invalidate()
     }
 
     /**
@@ -1436,8 +1485,6 @@ class WeekView @JvmOverloads constructor(
         highlightRect.set(l.toInt(), t, r.toInt(), b)
     }
     private fun dismissScheduleInsertion(){
-        doPrepareInsertion = false
-
         highlightRect.set(0, 0, 0, 0)
     }
 

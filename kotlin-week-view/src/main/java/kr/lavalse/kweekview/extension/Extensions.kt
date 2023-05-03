@@ -4,11 +4,10 @@ import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Path
-import android.graphics.RectF
 import android.util.TypedValue
-import java.text.SimpleDateFormat
 import java.time.*
 import java.time.format.DateTimeFormatter
+import java.time.temporal.TemporalAdjusters
 import java.time.temporal.WeekFields
 import java.util.*
 
@@ -22,6 +21,10 @@ object ELocalDateTime {
     fun LocalDateTime.weekOfYear() = get(WeekFields.of(Locale.getDefault()).weekOfWeekBasedYear())
     fun LocalDateTime.toTimeMillis() = atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
 
+    fun LocalDateTime.visibleDateFrom(days: Int)
+        = with(TemporalAdjusters.previousOrSame(DayOfWeek.SUNDAY))
+            .minusDays(days * 1L)
+    fun LocalDateTime.withDayOfWeek(dayOfWeek: DayOfWeek) = with(TemporalAdjusters.previousOrSame(dayOfWeek))
     fun LocalDateTime.toMinuteOfHours() = (hour * 60) + minute
 
     fun LocalDateTime.withTime(hour: Int, minute: Int = 0, second: Int = 0): LocalDateTime =
