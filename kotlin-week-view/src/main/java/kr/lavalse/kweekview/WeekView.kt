@@ -13,6 +13,7 @@ import androidx.interpolator.view.animation.FastOutLinearInInterpolator
 import kr.lavalse.kweekview.extension.ECanvas.drawHalfRoundRect
 import kr.lavalse.kweekview.extension.EContext.toDP
 import kr.lavalse.kweekview.extension.EContext.toSP
+import kr.lavalse.kweekview.extension.ELocalDateTime.visibleDateFrom
 import kr.lavalse.kweekview.extension.ELocalDateTime.isBeforeDay
 import kr.lavalse.kweekview.extension.ELocalDateTime.isSameDay
 import kr.lavalse.kweekview.extension.ELocalDateTime.isSameWeek
@@ -22,6 +23,7 @@ import kr.lavalse.kweekview.extension.ELocalDateTime.toMinuteOfHours
 import kr.lavalse.kweekview.extension.ELocalDateTime.toText
 import kr.lavalse.kweekview.extension.ELocalDateTime.toTimeMillis
 import kr.lavalse.kweekview.extension.ELocalDateTime.weekOfYear
+import kr.lavalse.kweekview.extension.ELocalDateTime.withDayOfWeek
 import kr.lavalse.kweekview.model.DummyWeekEvent
 import kr.lavalse.kweekview.model.WeekEvent
 import kr.lavalse.kweekview.model.WeekRect
@@ -30,6 +32,7 @@ import java.lang.Float.min
 import java.time.*
 import java.time.temporal.TemporalAdjusters
 import java.util.*
+import java.util.concurrent.TimeUnit
 import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.floor
@@ -40,16 +43,16 @@ class WeekView @JvmOverloads constructor(
 ) : View(context, attrs, defStyleAttr) {
     companion object {
         private const val DEFAULT_VISIBLE_DAYS = 7
-        private const val DEFAULT_PRELOAD_WEEK_DATA_RANGE = 3
+        private const val DEFAULT_PRELOAD_WEEK_DATA_RANGE = 1
 
         private const val DEFAULT_TEXT_SIZE = 12f
 
         private const val DEFAULT_GRID_SEPARATOR_COLOR = Color.LTGRAY
         private const val DEFAULT_GRID_SEPARATOR_STROKE_WIDTH = .3f
 
-        private const val DEFAULT_HOUR_HEIGHT = 70f
-        private const val DEFAULT_HOUR_HEIGHT_MIN = 50f
-        private const val DEFAULT_HOUR_HEIGHT_MAX = 90f
+        private const val DEFAULT_HOUR_HEIGHT = 50f
+        private const val DEFAULT_HOUR_HEIGHT_MIN = 30f
+        private const val DEFAULT_HOUR_HEIGHT_MAX = 70f
 
         private const val DEFAULT_TIMELINE_HORIZONTAL_PADDING = 10f
 
@@ -63,15 +66,16 @@ class WeekView @JvmOverloads constructor(
         private const val DEFAULT_DAY_OF_WEEK_SATURDAY_TEXT_COLOR = 0xFF4682F1
 
         private const val DEFAULT_ALLDAY_TEXT = "종일"
-        private const val DEFAULT_ALLDAY_AREA_HEIGHT = 100f
+        private const val DEFAULT_ALLDAY_AREA_HEIGHT = 50f
 
         private const val DEFAULT_DAY_BACKGROUND_COLOR = Color.WHITE
         private const val DEFAULT_TODAY_BACKGROUND_COLOR = 0xFFC7F1FF
         private const val DEFAULT_PAST_EVENT_COLOR = Color.LTGRAY
 
-        private const val DEFAULT_EVENT_CORNER_RADIUS = 15f
+        private const val DEFAULT_EVENT_CORNER_RADIUS = 0f
         private const val DEFAULT_EVENT_TITLE_PADDING = 10f
         private const val DEFAULT_EVENT_TEXT_COLOR = Color.BLACK
+        private const val DEFAULT_EVENT_TEXT_MAX_LINES = 2f
         private const val DEFAULT_TEMPORARY_EVENT_COLOR = 0xFFFA614F
 
         private const val DEFAULT_HIGHLIGHT_COLOR = 0xFF415AEF
@@ -96,13 +100,12 @@ class WeekView @JvmOverloads constructor(
         const val RIGHT = 2
         const val VERTICAL = 3
 
-        const val X_SPEED = .8f
+        const val X_SPEED = .5f
         const val X_AUTO_SCROLL_DURATION = 250
     }
 
     private val today = LocalDateTime.now()
     private var current : LocalDateTime = today
-    private var before : LocalDateTime? = null
 
     private val rects: MutableList<WeekRect> = mutableListOf()
 
@@ -187,6 +190,7 @@ class WeekView @JvmOverloads constructor(
 
     private var isEditMode = false
     private var isLongPressed = false
+    private var isDrawn = false
 
     private var listener : OnWeekViewListener? = null
 
@@ -240,7 +244,7 @@ class WeekView @JvmOverloads constructor(
         }
 
         override fun onScroll(e1: MotionEvent, e2: MotionEvent, dx: Float, dy: Float): Boolean {
-            if(isZooming || doPrepareInsertion || isEditMode) return true
+            if(isZooming || isEditMode) return true
 
             val didScrollHorizontal = abs(dx) > abs(dy)
 
@@ -287,23 +291,26 @@ class WeekView @JvmOverloads constructor(
                 Scroll.LEFT -> {
                     if(didScrollHorizontal && dx < -scaledTouchSlop)
                         currentScrollDirection = Scroll.RIGHT
-
-                    loadSchedules()
                 }
 
                 Scroll.RIGHT -> {
                     if(didScrollHorizontal && dx > scaledTouchSlop)
                         currentScrollDirection = Scroll.LEFT
-
-                    loadSchedules()
                 }
             }
 
             when(currentScrollDirection){
                 Scroll.LEFT, Scroll.RIGHT -> {
+                    /*
                     origin.x -= dx * Scroll.X_SPEED
 
+                    val day = ceil(origin.x / widthPerDay).toInt()
+                    val firstVisibleDate = LocalDateTime.now().visibleDateFrom(day)
+
+                    loadSchedules(firstVisibleDate.withDayOfWeek(DayOfWeek.SUNDAY))
+
                     ViewCompat.postInvalidateOnAnimation(this@WeekView)
+                    */
                 }
 
                 Scroll.VERTICAL -> {
@@ -323,16 +330,17 @@ class WeekView @JvmOverloads constructor(
                 return true
 
             scroller.forceFinished(true)
-
             currentFlingDirection = currentScrollDirection
 
             val minY = -((hourHeight * 24) + headerHeight - height)
             when(currentFlingDirection){
+                /*
                 Scroll.LEFT, Scroll.RIGHT ->
                     scroller.fling(origin.x.toInt(), origin.y.toInt(),
                         (vx * Scroll.X_SPEED).toInt(), 0,
                         Int.MIN_VALUE, Int.MAX_VALUE,
                         minY, 0)
+                */
 
                 Scroll.VERTICAL ->
                     scroller.fling(origin.x.toInt(), origin.y.toInt(),
@@ -349,9 +357,8 @@ class WeekView @JvmOverloads constructor(
         override fun onLongPress(e: MotionEvent) {
             if(e.y < headerHeight) return
 
-            if(!isLongPressed){
+            if(!isLongPressed)
                 isLongPressed = true
-            }
 
             if(isEditMode){
                 clearEditMode()
@@ -362,7 +369,15 @@ class WeekView @JvmOverloads constructor(
             isEditMode = true
 
             val start = adjustScheduleStartOrEnd(getTimeFromPoint(e.x, e.y), true)
+            // 오늘 기준 이전일 이면 롱클릭 편집을 하지 못하도록 한다.
+            if(today.isBeforeDay(start)){
+                isEditMode = false
+
+                return
+            }
+
             val end = adjustScheduleStartOrEnd(getTimeFromPoint(e.x, e.y), false)
+
             showScheduleInsertion(start.toLocalDate())
 
             editEvent = DummyWeekEvent().apply {
@@ -398,8 +413,6 @@ class WeekView @JvmOverloads constructor(
 
         override fun onScaleEnd(detector: ScaleGestureDetector) { isZooming = false }
     })
-
-    private var doPrepareInsertion = false
 
     private var didAttach = false
 
@@ -533,14 +546,53 @@ class WeekView @JvmOverloads constructor(
         super.onAttachedToWindow()
 
         if(!didAttach){
-            loadSchedules()
+            current = today
+            loadSchedules(current.withDayOfWeek(DayOfWeek.SUNDAY), true)
 
             didAttach = true
         }
     }
 
+    private fun loadSchedules(weekDate: LocalDateTime, force: Boolean = false){
+        val isSameWeek = current.isSameWeek(weekDate)
+        if(isSameWeek && !force) return
+
+        clearAllRect()
+
+        val schedules = mutableListOf<WeekEvent>()
+        //var date = weekDate.minusWeeks(1)
+        var date = weekDate
+
+        for(day in 0 until DEFAULT_PRELOAD_WEEK_DATA_RANGE){
+            with(date){
+                val pool = listener?.onWeekChanged(
+                    year,
+                    monthValue,
+                    dayOfMonth,
+                    weekOfYear(),
+                ) ?: listOf()
+
+                schedules.addAll(sortAndSplitSchedules(pool))
+            }
+
+            date = date.plusWeeks(1)
+        }
+
+        schedules.groupBy { if(it.isAllDay()) "A" else "C" }
+            .forEach { (k, l) ->
+                when(k){
+                    "A" -> dispatchAllDayEvents(l.toMutableList())
+                    "C" -> dispatchCommonEvents(l.toMutableList())
+                }
+            }
+
+        current = weekDate
+    }
+
     override fun onDraw(canvas: Canvas?) {
         super.onDraw(canvas)
+        isDrawn = true
+        println("[onDraw]")
 
         // 스크롤을 할 수 있는 최대 최소치를 정해준다
         origin.y = max(height - (hourHeight * 24) - headerHeight.toFloat() ,min(origin.y, 0f))
@@ -552,8 +604,7 @@ class WeekView @JvmOverloads constructor(
         val startX = timelineWidth + origin.x + (widthPerDay * firstVisibleIndex)
         var offsetX = startX
 
-        val firstDayOfWeek = current
-            .with(TemporalAdjusters.previousOrSame(DayOfWeek.SUNDAY))
+        val firstDayOfWeek = current.withDayOfWeek(DayOfWeek.SUNDAY)
 
         drawTimeline(canvas)
         drawGrid(canvas, firstVisibleIndex, firstDayOfWeek, startX)
@@ -591,42 +642,6 @@ class WeekView @JvmOverloads constructor(
             drawEdit(canvas, firstVisibleIndex, firstDayOfWeek, startX)
     }
 
-    private fun loadSchedules(){
-        val isNotSame = before?.isSameWeek(current) ?: false
-        if(isNotSame) return
-
-        clearAllRect()
-
-        val schedules = mutableListOf<WeekEvent>()
-
-        var date = current.minusWeeks(1)
-
-        for(day in 0 until DEFAULT_PRELOAD_WEEK_DATA_RANGE){
-            with(date){
-                val pool = listener?.onWeekChanged(
-                    year,
-                    monthValue,
-                    dayOfMonth,
-                    weekOfYear(),
-                ) ?: listOf()
-
-                schedules.addAll(sortAndSplitSchedules(pool))
-            }
-
-            date = date.plusWeeks(1)
-        }
-
-        schedules.groupBy { if(it.isAllDay()) "A" else "C" }
-            .forEach { (k, l) ->
-                when(k){
-                    "A" -> dispatchAllDayEvents(l.toMutableList())
-                    "C" -> dispatchCommonEvents(l.toMutableList())
-                }
-            }
-
-        before = current
-    }
-
     private fun sortAndSplitSchedules(events: List<WeekEvent>) : List<WeekEvent> {
         sortEvent(events)
 
@@ -639,12 +654,8 @@ class WeekView @JvmOverloads constructor(
     private fun adjustScheduleStartOrEnd(times: Long, isStartOrEnd: Boolean)
         = times.toLocalDateTime().run { withTime(if(isStartOrEnd) hour else hour + 1, 0, 0) }
 
-    private fun <T: WeekEvent> splitEventPerDay(event: T, force: Boolean = false) : List<WeekEvent> {
+    private fun <T: WeekEvent> splitEventPerDay(event: T) : List<WeekEvent> {
         val events = mutableListOf<WeekEvent>()
-
-        if(event.isAllDay() && !force){
-            return listOf(event)
-        }
 
         // 스케쥴이 하루에 끝나지 않는 경우에는 스케쥴을 일 단위로 분리를 시켜줘야 한다
         if(!event.run { startAt!!.isSameDay(endAt!!) }){
@@ -719,30 +730,17 @@ class WeekView @JvmOverloads constructor(
     }
 
     private fun dispatchAllDayEvents(events: MutableList<WeekEvent>){
-        val groups = mutableListOf<MutableList<WeekEvent>>()
+        for(event in events){
+            with(event){
+                val (l, r) = 0f to 1f
+                val t = 0f
+                val b = 1f
 
-        for(e in events){
-            var isPlaced = false
+                val rect = WeekRect(l, t, r, b, this)
 
-            for(group in groups){
-                for(ge in group){
-                    if(isEventCollide(ge, e)){
-                        group.add(e)
-                        isPlaced = true
-
-                        break
-                    }
-                }
-            }
-
-            if(!isPlaced){
-                groups.add(mutableListOf<WeekEvent>().apply {
-                    add(e)
-                })
+                rects.add(rect)
             }
         }
-
-        groups.forEach(::positioningAllDayEventRectOffset)
     }
 
     private fun overlapCommonEvents(events: List<WeekEvent>){
@@ -772,7 +770,7 @@ class WeekView @JvmOverloads constructor(
         collisions.forEach(::positioningEventRectOffset)
     }
 
-    private fun positioningEventRectOffset(group: MutableList<WeekEvent>){
+    private fun positioningEventRectOffset(group: List<WeekEvent>){
         val spans = mutableListOf<MutableList<WeekEvent>>()
         spans.add(mutableListOf())
 
@@ -799,27 +797,26 @@ class WeekView @JvmOverloads constructor(
             }
         }
 
-        // 최대 Span 의 갯수를 알아낸다
-        val spanCount = spans.maxOf { it.size }
-        for(i in 0 until spanCount){
-            var j = 0f
+        val sortedSpans = spans.flatten().sortedByDescending { it.difference }
+        val spanCount = sortedSpans.size
 
-            for(span in spans){
-                if(span.size - 1 >= i){
-                    with(span[i]){
-                        val l = j / spans.size
-                        val t = startAt!!.toMinuteOfHours() * 1f
-                        val r = 1f / spans.size
-                        val b = endAt!!.toMinuteOfHours() * 1f
+        var j = 0f
+        for(span in sortedSpans){
+            with(span){
+                val alpha = (255 * ((j + 1) / spanCount)).roundToInt()
+                setBackgroundColor(alpha shl 24 or (backgroundColor and 0x00ffffff))
 
-                        val rect = WeekRect(l, t, r, b, this)
+                val l = 0f
+                val t = startAt!!.toMinuteOfHours() * 1f
+                val r = 1f
+                val b = endAt!!.toMinuteOfHours() * 1f
 
-                        rects.add(rect)
-                    }
-                }
+                val rect = WeekRect(l, t, r, b, this)
 
-                j++
+                rects.add(rect)
             }
+
+            j++
         }
     }
 
@@ -833,76 +830,6 @@ class WeekView @JvmOverloads constructor(
                 val b = endAt!!.toMinuteOfHours() * 1f
 
                 rects.add(WeekRect(0f, t, 1f, b, this))
-            }
-        }
-    }
-
-    private fun positioningAllDayEventRectOffset(group: List<WeekEvent>){
-        val spans = mutableListOf<MutableList<WeekEvent>>()
-        spans.add(mutableListOf())
-
-        for(e in group){
-            var isPlaced = false
-
-            for(span in spans){
-                if(span.isEmpty()){
-                    span.add(e)
-
-                    isPlaced = true
-                }else if(!isEventCollide(e, span.last())){
-                    span.add(e)
-
-                    isPlaced = true
-                    break
-                }
-            }
-
-            if(!isPlaced){
-                spans.add(mutableListOf<WeekEvent>().apply {
-                    add(e)
-                })
-            }
-        }
-
-        // 최대 Span 의 갯수를 알아낸다
-        val spanCount = spans.maxOf { it.size }
-        for(i in 0 until spanCount){
-            var j = 0f
-
-            for(span in spans){
-                if(span.size - 1 >= i){
-                    with(span[i]){
-                        val (l, r) = 0f to 1f
-                        val t = j / spans.size
-                        val b = 1f / spans.size
-
-                        // 종일 이벤트는 수평으로 처리하기 때문에
-                        // 일반 이벤트 와는 다르게 시간 분할을 겹치는 층을 계산한 후에 한다
-                        // 그렇지 않으면, 층이 다르게 보인다.
-                        val splits = splitEventPerDay(this, true)
-
-                        // 종일 이벤트가 하루만 있는 경우에는 그냥 Rect 를 만들어 패스하도록 한다.
-                        if(splits.size == 1){
-                            val rect = WeekRect(l, t, r, b, this)
-
-                            rects.add(rect)
-                        }else{
-                            for(k in splits.indices){
-                                val rect = WeekRect(l, t, r, b, splits[k], this)
-
-                                rect.rectType = when(k){
-                                    0 -> WeekRect.TYPE_FRONT
-                                    splits.size - 1 -> WeekRect.TYPE_REAR
-                                    else -> WeekRect.TYPE_CENTER
-                                }
-
-                                rects.add(rect)
-                            }
-                        }
-                    }
-                }
-
-                j++
             }
         }
     }
@@ -1077,12 +1004,14 @@ class WeekView @JvmOverloads constructor(
     private fun drawCommonRect(canvas: Canvas?, date: LocalDateTime, startX: Float, type: Int){
         if(rects.isEmpty()) return
 
+        val cRects = rects
+            .filterNot { (!date.isSameDay(it.startAt) || it.event.isAllDay()) || it.event is DummyWeekEvent }
+            .reversed()
+
         canvas?.run {
             clipRect(timelineWidth, headerHeight, width, height)
 
-            for (rect in rects){
-                if((!date.isSameDay(rect.startAt) || rect.event.isAllDay()) || rect.event is DummyWeekEvent) continue
-
+            for (rect in cRects){
                 val offsetY = origin.y + headerHeight
 
                 val l = startX + (rect.left * widthPerDay)
@@ -1092,18 +1021,13 @@ class WeekView @JvmOverloads constructor(
 
                 rect.setAbsoluteRect(l, t, r, b)
 
-                if(l < r
-                    && l < width && t < height
-                    && r > timelineWidth && b > headerHeight){
-
-                    painter.color = when(type){
-                        DayType.PAST -> pastEventColor
-                        else -> rect.backgroundColor
-                    }
-
-                    drawRoundRect(rect.absoluteRect, eventCornerRadius, eventCornerRadius, painter)
-                    drawEventText(this, rect.originalEvent, l, t, r, b)
+                painter.color = when(type){
+                    DayType.PAST -> pastEventColor
+                    else -> rect.backgroundColor
                 }
+
+                drawRoundRect(rect.absoluteRect, eventCornerRadius, eventCornerRadius, painter)
+                drawEventText(this, rect.originalEvent, l, t, r, b)
             }
         }
     }
@@ -1124,7 +1048,8 @@ class WeekView @JvmOverloads constructor(
             val lineHeight = sl.height / sl.lineCount
 
             if(availHeight >= lineHeight){
-                var availLineCount = availHeight / lineHeight
+                var availLineCount = (availHeight / lineHeight)
+                    .coerceAtMost(DEFAULT_EVENT_TEXT_MAX_LINES)
 
                 do {
                     sl = StaticLayout(
@@ -1186,21 +1111,8 @@ class WeekView @JvmOverloads constructor(
 
                 rect.setAbsoluteRect(l, t, r, b)
 
-                when(rect.rectType){
-                    WeekRect.TYPE_FRONT -> drawHalfRoundRect(l, t, r, b, eventCornerRadius, painter)
-                    WeekRect.TYPE_CENTER -> drawRect(l, t, r, b, painter)
-                    WeekRect.TYPE_REAR -> {
-                        drawHalfRoundRect(l, t, r, b, eventCornerRadius, painter, false)
-
-                        // Front 에 하면 스크롤링 할 때 범위가 넘어가면 잘림
-                        drawEventText(canvas, rect.event, l - ((r - l) * (rect.originalEvent.days - 1)), t, r, b)
-                    }
-
-                    WeekRect.TYPE_SINGLE -> {
-                        drawRoundRect(rect.absoluteRect, eventCornerRadius, eventCornerRadius, painter)
-                        drawEventText(canvas, rect.event, l, t, r, b)
-                    }
-                }
+                drawRoundRect(rect.absoluteRect, eventCornerRadius, eventCornerRadius, painter)
+                drawEventText(canvas, rect.event, l, t, r, b)
             }
 
             restore()
@@ -1302,7 +1214,7 @@ class WeekView @JvmOverloads constructor(
         } ?: super.onTouchEvent(event)
 
     private fun getTimeFromPoint(x: Float, y: Float): Long {
-        var date = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.SUNDAY))
+        var date = current.with(TemporalAdjusters.previousOrSame(DayOfWeek.SUNDAY))
 
         val firstVisibleIndex = -ceil(origin.x / widthPerDay).toInt()
         var startX = timelineWidth + origin.x + (widthPerDay * firstVisibleIndex)
@@ -1329,8 +1241,6 @@ class WeekView @JvmOverloads constructor(
     override fun computeScroll() {
         super.computeScroll()
 
-        loadSchedules()
-
         if(scroller.isFinished){
             if(currentFlingDirection != Scroll.NONE){
                 scrollToNearestOrigin()
@@ -1347,31 +1257,34 @@ class WeekView @JvmOverloads constructor(
         }
     }
 
-    private fun scrollToNearestOrigin(){
-        var days = origin.x / widthPerDay
-        days = when {
-            currentScrollDirection == Scroll.LEFT -> floor(days)
-            currentScrollDirection == Scroll.RIGHT -> ceil(days)
-            currentFlingDirection != Scroll.NONE -> kotlin.math.round(days)
-            else -> kotlin.math.round(days)
+    private fun scrollToNearestOrigin(animated: Boolean = true){
+        val days = (origin.x / widthPerDay).run {
+            when {
+                currentScrollDirection == Scroll.LEFT -> floor(this)
+                currentScrollDirection == Scroll.RIGHT -> ceil(this)
+                currentFlingDirection != Scroll.NONE -> kotlin.math.round(this)
+                else -> kotlin.math.round(this)
+            }
         }
 
         val nearestOrigin = origin.x - (days * widthPerDay)
         if(nearestOrigin != 0f){
-            scroller.forceFinished(true)
-            scroller.startScroll(
-                origin.x.toInt(), origin.y.toInt(),
-                -nearestOrigin.toInt(), 0,
-                ((abs(nearestOrigin) / widthPerDay) * Scroll.X_AUTO_SCROLL_DURATION).toInt()
-            )
-
-            ViewCompat.postInvalidateOnAnimation(this)
+            scrollOriginTo(-nearestOrigin.toInt(), 0, if(animated) 250 else 0)
         }
 
         with(Scroll.NONE){
             currentScrollDirection = this
             currentFlingDirection = this
         }
+    }
+
+    private fun scrollOriginTo(dx: Int, dy: Int, duration: Int = 250){
+        with(scroller){
+            forceFinished(true)
+            startScroll(origin.x.toInt(), origin.y.toInt(), dx, dy, duration)
+        }
+
+        ViewCompat.postInvalidateOnAnimation(this)
     }
 
     private fun clearEditMode(){
@@ -1401,18 +1314,59 @@ class WeekView @JvmOverloads constructor(
     /**
      * 현재 시각으로 스크롤을 이동하도록 한다.
      */
-    fun scrollToCurrent() {
-        scrollToTime(LocalTime.now().hour)
+    fun scrollToCurrentTime() {
+        scrollToTime(LocalDateTime.now().hour)
     }
 
     /**
      * 해당 시각으로 스크롤을 이동하도록 한다. 해당 메소드를 사용하지 않으면 00시부터 데이터가 디스플레이 된다.
+     *
+     * @param hour 0~23 까지의 시간
+     * @param smoothScroll 스크롤 애니메이션 여부
+     */
+    fun scrollToTime(hour: Int, smoothScroll: Boolean = true){
+        if(!isDrawn){
+            val offset = ((hourHeight * hour) - height)
+
+            origin.y = -offset.toFloat()
+        }else{
+            if(!smoothScroll){
+                val offset = hourHeight * hour
+
+                origin.y = -offset.toFloat()
+
+                invalidate()
+            }else{
+                val dy = origin.y + (hourHeight * hour)
+
+                scrollOriginTo(0, -dy.toInt())
+            }
+        }
+    }
+
+    /**
+     * 스크롤 애니메이션이 없이 시간을 설정하도록 한다.
+     *
+     * @param hour 0~23 까지의 시간
      */
     fun scrollToTime(hour: Int){
-        val offset = (hourHeight * hour) - height
-        origin.y = -offset.toFloat()
+        scrollToTime(hour, false)
+    }
 
-        ViewCompat.postInvalidateOnAnimation(this)
+    fun moveToNext(){
+        val date = current.plusWeeks(1)
+
+        loadSchedules(date)
+
+        invalidate()
+    }
+
+    fun moveToPrev(){
+        val date = current.minusWeeks(1)
+
+        loadSchedules(date)
+
+        invalidate()
     }
 
     /**
@@ -1436,8 +1390,6 @@ class WeekView @JvmOverloads constructor(
         highlightRect.set(l.toInt(), t, r.toInt(), b)
     }
     private fun dismissScheduleInsertion(){
-        doPrepareInsertion = false
-
         highlightRect.set(0, 0, 0, 0)
     }
 

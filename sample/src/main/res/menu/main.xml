@@ -3,6 +3,14 @@
     xmlns:tools="http://schemas.android.com/tools"
     tools:context=".MyActivity" >
 
+    <item android:id="@+id/action_prev"
+        android:title="PREV"
+        app:showAsAction="ifRoom" />
+    <item android:id="@+id/action_next"
+        android:title="NEXT"
+        app:showAsAction="ifRoom" />
+    <item android:id="@+id/action_scroll_to"
+        android:title="Scroll to 6AM"></item>
     <!--
     <item android:id="@+id/action_today"
         android:title="@string/action_today"
