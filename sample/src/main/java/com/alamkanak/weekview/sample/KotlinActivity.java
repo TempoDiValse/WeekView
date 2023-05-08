@@ -252,6 +252,13 @@ public class KotlinActivity extends AppCompatActivity {
                 view.scrollToTime(6, true);
             }
             break;
+
+            case R.id.action_today: {
+                WeekView view = ((WeekView) findViewById(R.id.weekView));
+
+                view.moveToToday();
+            }
+            break;
         }
 
         return super.onOptionsItemSelected(item);

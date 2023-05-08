@@ -6,14 +6,13 @@ import android.text.*
 import android.text.style.StyleSpan
 import android.util.AttributeSet
 import android.view.*
+import android.view.animation.DecelerateInterpolator
 import android.widget.OverScroller
 import androidx.core.view.GestureDetectorCompat
 import androidx.core.view.ViewCompat
 import androidx.interpolator.view.animation.FastOutLinearInInterpolator
-import kr.lavalse.kweekview.extension.ECanvas.drawHalfRoundRect
 import kr.lavalse.kweekview.extension.EContext.toDP
 import kr.lavalse.kweekview.extension.EContext.toSP
-import kr.lavalse.kweekview.extension.ELocalDateTime.visibleDateFrom
 import kr.lavalse.kweekview.extension.ELocalDateTime.isBeforeDay
 import kr.lavalse.kweekview.extension.ELocalDateTime.isSameDay
 import kr.lavalse.kweekview.extension.ELocalDateTime.isSameWeek
@@ -32,7 +31,6 @@ import java.lang.Float.min
 import java.time.*
 import java.time.temporal.TemporalAdjusters
 import java.util.*
-import java.util.concurrent.TimeUnit
 import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.floor
@@ -43,7 +41,7 @@ class WeekView @JvmOverloads constructor(
 ) : View(context, attrs, defStyleAttr) {
     companion object {
         private const val DEFAULT_VISIBLE_DAYS = 7
-        private const val DEFAULT_PRELOAD_WEEK_DATA_RANGE = 1
+        private const val DEFAULT_PRELOAD_WEEK_DATA_RANGE = 3
 
         private const val DEFAULT_TEXT_SIZE = 12f
 
@@ -100,17 +98,28 @@ class WeekView @JvmOverloads constructor(
         const val RIGHT = 2
         const val VERTICAL = 3
 
-        const val X_SPEED = .5f
+        const val X_SPEED = .8f
         const val X_AUTO_SCROLL_DURATION = 250
+    }
+
+    private object PageMove {
+        const val PREV_MONTH = -1
+        const val NONE = 0
+        const val NEXT_MONTH = 1
+        const val TODAY = 2
+
+        const val DISTANCE_TO_MOVE = 400
     }
 
     private val today = LocalDateTime.now()
     private var current : LocalDateTime = today
+    private var firstVisibleDate: LocalDateTime = today
 
     private val rects: MutableList<WeekRect> = mutableListOf()
 
     // x, y 좌표
     private val origin: PointF = PointF(0f, 0f)
+    private var prevX: Float = 0f
 
     private var eventCornerRadius = 0f
     private var eventTitlePadding = 0f
@@ -197,10 +206,17 @@ class WeekView @JvmOverloads constructor(
     private var editEvent : DummyWeekEvent? = null
     private var pEditEvent: DummyWeekEvent? = null
 
-    private var scroller = OverScroller(context, FastOutLinearInInterpolator())
+    private var scroller = OverScroller(context, DecelerateInterpolator())
     private var detector: GestureDetectorCompat
     private val gestureListener = object : GestureDetector.SimpleOnGestureListener() {
         override fun onDown(e: MotionEvent): Boolean {
+            if(isEditMode){
+                clearEditMode()
+
+                invalidate()
+                return true
+            }
+
             scroller.forceFinished(true)
 
             scrollToNearestOrigin()
@@ -209,16 +225,8 @@ class WeekView @JvmOverloads constructor(
         }
 
         override fun onSingleTapConfirmed(e: MotionEvent): Boolean {
-            if(isEditMode){
-                clearEditMode()
-
-                invalidate()
-                return super.onSingleTapConfirmed(e)
-            }
-
             if(rects.isNotEmpty()){
-                val rRects = rects
-                rRects.reverse()
+                val rRects = rects.reversed()
 
                 for(r in rRects){
                     if(r.containsTouchPoint(e.x, e.y)){
@@ -301,16 +309,9 @@ class WeekView @JvmOverloads constructor(
 
             when(currentScrollDirection){
                 Scroll.LEFT, Scroll.RIGHT -> {
-                    /*
                     origin.x -= dx * Scroll.X_SPEED
 
-                    val day = ceil(origin.x / widthPerDay).toInt()
-                    val firstVisibleDate = LocalDateTime.now().visibleDateFrom(day)
-
-                    loadSchedules(firstVisibleDate.withDayOfWeek(DayOfWeek.SUNDAY))
-
                     ViewCompat.postInvalidateOnAnimation(this@WeekView)
-                    */
                 }
 
                 Scroll.VERTICAL -> {
@@ -334,13 +335,11 @@ class WeekView @JvmOverloads constructor(
 
             val minY = -((hourHeight * 24) + headerHeight - height)
             when(currentFlingDirection){
-                /*
                 Scroll.LEFT, Scroll.RIGHT ->
                     scroller.fling(origin.x.toInt(), origin.y.toInt(),
                         (vx * Scroll.X_SPEED).toInt(), 0,
                         Int.MIN_VALUE, Int.MAX_VALUE,
                         minY, 0)
-                */
 
                 Scroll.VERTICAL ->
                     scroller.fling(origin.x.toInt(), origin.y.toInt(),
@@ -415,6 +414,7 @@ class WeekView @JvmOverloads constructor(
     })
 
     private var didAttach = false
+    private var statePageMove = PageMove.NONE
 
     init {
         with(context.theme.obtainStyledAttributes(attrs, R.styleable.WeekView, defStyleAttr, 0)){
@@ -547,7 +547,7 @@ class WeekView @JvmOverloads constructor(
 
         if(!didAttach){
             current = today
-            loadSchedules(current.withDayOfWeek(DayOfWeek.SUNDAY), true)
+            loadSchedules(current, true)
 
             didAttach = true
         }
@@ -560,8 +560,7 @@ class WeekView @JvmOverloads constructor(
         clearAllRect()
 
         val schedules = mutableListOf<WeekEvent>()
-        //var date = weekDate.minusWeeks(1)
-        var date = weekDate
+        var date = weekDate.minusWeeks(1)
 
         for(day in 0 until DEFAULT_PRELOAD_WEEK_DATA_RANGE){
             with(date){
@@ -591,8 +590,6 @@ class WeekView @JvmOverloads constructor(
 
     override fun onDraw(canvas: Canvas?) {
         super.onDraw(canvas)
-        isDrawn = true
-        println("[onDraw]")
 
         // 스크롤을 할 수 있는 최대 최소치를 정해준다
         origin.y = max(height - (hourHeight * 24) - headerHeight.toFloat() ,min(origin.y, 0f))
@@ -604,18 +601,16 @@ class WeekView @JvmOverloads constructor(
         val startX = timelineWidth + origin.x + (widthPerDay * firstVisibleIndex)
         var offsetX = startX
 
-        val firstDayOfWeek = current.withDayOfWeek(DayOfWeek.SUNDAY)
+        val standard = LocalDateTime.now()
 
         drawTimeline(canvas)
-        drawGrid(canvas, firstVisibleIndex, firstDayOfWeek, startX)
+        drawGrid(canvas, firstVisibleIndex, standard, startX)
 
         canvas?.drawRect(timelineWidth * 1f, 0f, width * 1f, dayOfWeekHeight * 1f, dayBackgroundPaint)
 
         for(drawWhat in 0 until 2){
-            val temp = firstDayOfWeek.run { LocalDateTime.of(toLocalDate(), toLocalTime()) }
-
             for(index in firstVisibleIndex + 1 .. firstVisibleIndex + visibleDays + 1){
-                val date = temp.plusDays((index - 1).toLong())
+                val date = standard.plusDays((index - 1).toLong())
 
                 val dt = when {
                     today.isBeforeDay(date) -> DayType.PAST
@@ -632,6 +627,10 @@ class WeekView @JvmOverloads constructor(
                     1 -> drawAllDayEvent(canvas, date, offsetX, dt)
                 }
 
+                if(index == firstVisibleIndex + 1){
+                    firstVisibleDate = date
+                }
+
                 offsetX += widthPerDay
             }
 
@@ -639,7 +638,9 @@ class WeekView @JvmOverloads constructor(
         }
 
         if(isEditMode)
-            drawEdit(canvas, firstVisibleIndex, firstDayOfWeek, startX)
+            drawEdit(canvas, firstVisibleIndex, standard, startX)
+
+        isDrawn = true
     }
 
     private fun sortAndSplitSchedules(events: List<WeekEvent>) : List<WeekEvent> {
@@ -1175,9 +1176,8 @@ class WeekView @JvmOverloads constructor(
         = event?.run {
             scaleDetector.onTouchEvent(event)
 
-            if(detector.onTouchEvent(this)){
-                true
-            }else{
+            if(detector.onTouchEvent(this)) true
+            else{
                 when(actionMasked){
                     MotionEvent.ACTION_MOVE -> {
                         if(isLongPressed){
@@ -1214,7 +1214,7 @@ class WeekView @JvmOverloads constructor(
         } ?: super.onTouchEvent(event)
 
     private fun getTimeFromPoint(x: Float, y: Float): Long {
-        var date = current.with(TemporalAdjusters.previousOrSame(DayOfWeek.SUNDAY))
+        var date = today
 
         val firstVisibleIndex = -ceil(origin.x / widthPerDay).toInt()
         var startX = timelineWidth + origin.x + (widthPerDay * firstVisibleIndex)
@@ -1222,11 +1222,13 @@ class WeekView @JvmOverloads constructor(
         for(index in firstVisibleIndex + 1 .. firstVisibleIndex + visibleDays + 1){
             val start = startX.coerceAtLeast(timelineWidth * 1f)
 
-            if(startX + widthPerDay - start > 0 && x > start && x < startX + widthPerDay){
+            if(startX + widthPerDay - start > 0
+                && x > start && x < startX + widthPerDay){
                 val offsetY = y - origin.y - headerHeight
                 val hour = (offsetY / hourHeight).toInt()
 
-                date = date.plusDays((index - 1).toLong())
+                date = date
+                    .plusDays((index - 1).toLong())
                     .withTime(hour, 0, 0)
 
                 return date.toTimeMillis()
@@ -1242,12 +1244,38 @@ class WeekView @JvmOverloads constructor(
         super.computeScroll()
 
         if(scroller.isFinished){
-            if(currentFlingDirection != Scroll.NONE){
-                scrollToNearestOrigin()
+            when(statePageMove){
+                PageMove.PREV_MONTH -> {
+                    val date = current.minusWeeks(1)
+                    loadSchedules(date)
+
+                    statePageMove = PageMove.NONE
+                }
+
+                PageMove.NEXT_MONTH -> {
+                    val date = current.plusWeeks(1)
+                    loadSchedules(date)
+
+                    statePageMove = PageMove.NONE
+                }
+
+                PageMove.TODAY -> {
+                    loadSchedules(today)
+
+                    statePageMove = PageMove.NONE
+                }
+            }
+
+            // 모든 스크롤/플링 이벤트가 종료 되면,
+            if(currentScrollDirection == Scroll.NONE
+                && currentFlingDirection == Scroll.NONE){
+                // x 좌표를 저장한다.
+                prevX = origin.x
             }
         }else{
             if(currentFlingDirection != Scroll.NONE
                 && scroller.currVelocity <= minimumFlingVelocity){
+
                 scrollToNearestOrigin()
             }else if(scroller.computeScrollOffset()){
                 origin.set(scroller.currX.toFloat(), scroller.currY.toFloat())
@@ -1257,19 +1285,61 @@ class WeekView @JvmOverloads constructor(
         }
     }
 
-    private fun scrollToNearestOrigin(animated: Boolean = true){
-        val days = (origin.x / widthPerDay).run {
-            when {
-                currentScrollDirection == Scroll.LEFT -> floor(this)
-                currentScrollDirection == Scroll.RIGHT -> ceil(this)
-                currentFlingDirection != Scroll.NONE -> kotlin.math.round(this)
-                else -> kotlin.math.round(this)
-            }
-        }
+    /**
+     * 가장 가까운 일자에 자동으로 스크롤이 붙도록 한다.
+     * 해당 메소드는 @see[onTouchEvent] (Scroll 시)  와 @see[computeScroll] (Fling 시) 에서 확인 가능하다
+     */
+    private fun scrollToNearestOrigin(){
+        val diffX = abs(origin.x - prevX)
 
-        val nearestOrigin = origin.x - (days * widthPerDay)
-        if(nearestOrigin != 0f){
-            scrollOriginTo(-nearestOrigin.toInt(), 0, if(animated) 250 else 0)
+        // 허용 범위를 넘어서게되면 페이지를 이동한다.
+        if(diffX > PageMove.DISTANCE_TO_MOVE){
+            val days = (origin.x / widthPerDay).run {
+                when {
+                    currentScrollDirection == Scroll.LEFT -> floor(this)
+                    currentScrollDirection == Scroll.RIGHT -> ceil(this)
+                    currentFlingDirection != Scroll.NONE -> kotlin.math.round(this)
+                    else -> kotlin.math.round(this)
+                }
+            }
+
+            when {
+                currentScrollDirection == Scroll.LEFT -> {
+                    val date = LocalDate.now()
+                        .minusDays(days.toLong())
+                        .plusWeeks(1)
+                        .withDayOfWeek(today.dayOfWeek)
+
+                    val diff = today.toLocalDate().toEpochDay() - date.toEpochDay()
+                    val offset = origin.x - (diff * widthPerDay)
+
+                    // 한 주 뒤로 조정하여 주를 이동 시킬 준비를 한다
+                    current = date.minusWeeks(1 ).toLocalDateTime()
+                    statePageMove = PageMove.NEXT_MONTH
+
+                    scrollOriginTo(-offset.toInt(), 0)
+                }
+
+                currentScrollDirection == Scroll.RIGHT -> {
+                    val date = LocalDate.now()
+                        .minusDays(days.toLong())
+                        .withDayOfWeek(today.dayOfWeek)
+
+                    val diff = today.toLocalDate().toEpochDay() - date.toEpochDay()
+                    val offset = origin.x - (diff * widthPerDay)
+
+                    // 한 주 앞으로 조정하여 주를 이동 시킬 준비를 한다
+                    current = date.plusWeeks(1 ).toLocalDateTime()
+                    statePageMove = PageMove.PREV_MONTH
+
+                    scrollOriginTo(-offset.toInt(), 0)
+                }
+            }
+        }else{
+            // 허용 범위를 넘어서지 못하게 되면 원래 좌표로 되돌아가게 된다.
+            val dx = origin.x - prevX
+
+            scrollOriginTo(-dx.toInt(), 0, 100)
         }
 
         with(Scroll.NONE){
@@ -1281,6 +1351,7 @@ class WeekView @JvmOverloads constructor(
     private fun scrollOriginTo(dx: Int, dy: Int, duration: Int = 250){
         with(scroller){
             forceFinished(true)
+
             startScroll(origin.x.toInt(), origin.y.toInt(), dx, dy, duration)
         }
 
@@ -1354,19 +1425,38 @@ class WeekView @JvmOverloads constructor(
     }
 
     fun moveToNext(){
-        val date = current.plusWeeks(1)
+        statePageMove = PageMove.NEXT_MONTH
 
-        loadSchedules(date)
+        // 일자가 다른 경우 시작일(일요일)로 맞춘다.
+        val fdow = firstVisibleDate.withDayOfWeek(today.dayOfWeek).toLocalDate()
+        val diff = firstVisibleDate.toLocalDate().toEpochDay() - fdow.toEpochDay()
 
-        invalidate()
+        val offset = (diff * widthPerDay) + (visibleDays * widthPerDay)
+
+        scrollOriginTo(-offset.toInt(), 0)
     }
 
     fun moveToPrev(){
-        val date = current.minusWeeks(1)
+        statePageMove = PageMove.PREV_MONTH
 
-        loadSchedules(date)
+        // 일자가 다른 경우 시작일(금일) 로 맞춘다.
+        val fdow = firstVisibleDate.withDayOfWeek(today.dayOfWeek).toLocalDate()
+        val diff = firstVisibleDate.toLocalDate().toEpochDay() - fdow.toEpochDay()
 
-        invalidate()
+        val offset = (diff * widthPerDay) + (visibleDays * widthPerDay)
+
+        scrollOriginTo(offset.toInt(), 0)
+    }
+
+    fun moveToToday(){
+        statePageMove = PageMove.TODAY
+
+        val fdow = firstVisibleDate.withDayOfWeek(today.dayOfWeek).toLocalDate()
+        val diff = today.toLocalDate().toEpochDay() - fdow.toEpochDay()
+
+        val offset = diff * widthPerDay
+
+        scrollOriginTo(-offset.toInt(), 0)
     }
 
     /**
@@ -1378,9 +1468,9 @@ class WeekView @JvmOverloads constructor(
         val firstVisibleIndex = -ceil(origin.x / widthPerDay).toInt()
         val startX = timelineWidth + origin.x + (widthPerDay * firstVisibleIndex)
 
-        val firstVisibleDate = current
-            .with(TemporalAdjusters.previousOrSame(DayOfWeek.SUNDAY))
-            .plusDays(firstVisibleIndex * 1L).toLocalDate()
+        val firstVisibleDate = today
+                .plusDays(firstVisibleIndex * 1L)
+                .toLocalDate()
 
         val days = date.toEpochDay() - firstVisibleDate.toEpochDay()
 

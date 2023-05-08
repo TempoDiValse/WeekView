@@ -36,9 +36,12 @@ object ELocalDateTime {
             with(LocalTime.of(hour, minute, second))
         }
 
-
     fun Long.toLocalDateTime(): LocalDateTime
         = LocalDateTime.ofInstant(Instant.ofEpochMilli(this), ZoneId.systemDefault())
+
+    fun LocalDate.withDayOfWeek(dayOfWeek: DayOfWeek) = with(TemporalAdjusters.previousOrSame(dayOfWeek))
+    fun LocalDate.toLocalDateTime() : LocalDateTime
+        = LocalDateTime.of(this, LocalTime.of(0, 0))
 }
 
 object EContext {

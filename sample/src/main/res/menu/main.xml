@@ -11,6 +11,8 @@
         app:showAsAction="ifRoom" />
     <item android:id="@+id/action_scroll_to"
         android:title="Scroll to 6AM"></item>
+    <item android:id="@+id/action_today"
+        android:title="Today" />
     <!--
     <item android:id="@+id/action_today"
         android:title="@string/action_today"
