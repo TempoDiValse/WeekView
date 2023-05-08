@@ -43,6 +43,8 @@ class WeekRect : RectF {
     val difference get () = event.difference
 
     val backgroundColor get() = event.backgroundColor
+    val strokeColor get() = event.strokeColor
+    val isBrightColor get() = event.isBrightColor
 
     fun setAbsoluteRect(l: Float, t: Float, r: Float, b: Float){
         absRect.set(l, t, r, b)

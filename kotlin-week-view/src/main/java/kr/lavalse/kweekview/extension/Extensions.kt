@@ -39,6 +39,7 @@ object ELocalDateTime {
     fun Long.toLocalDateTime(): LocalDateTime
         = LocalDateTime.ofInstant(Instant.ofEpochMilli(this), ZoneId.systemDefault())
 
+    fun LocalDate.isSameDay(with: LocalDate) = year == with.year && dayOfYear == with.dayOfYear
     fun LocalDate.withDayOfWeek(dayOfWeek: DayOfWeek) = with(TemporalAdjusters.previousOrSame(dayOfWeek))
     fun LocalDate.toLocalDateTime() : LocalDateTime
         = LocalDateTime.of(this, LocalTime.of(0, 0))

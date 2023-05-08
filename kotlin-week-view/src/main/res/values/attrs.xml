@@ -2,12 +2,13 @@
 <resources>
     <declare-styleable name="WeekView">
         <attr name="android:textSize"></attr>
-        <attr name="cornerRadius" format="dimension"></attr>
+        <attr name="canMovePastDate" format="boolean"></attr>
 
         <!-- Event -->
         <attr name="eventTitlePadding" format="dimension"></attr>
         <attr name="eventTextColor" format="color"></attr>
         <attr name="eventTextSize" format="dimension"></attr>
+        <!-- <attr name="eventCornerRadius" format="dimension"></attr> -->
         <attr name="editEventText" format="string"></attr>
         <attr name="editEventColor" format="color"></attr>
         <attr name="pastEventColor" format="color"></attr>
@@ -22,6 +23,7 @@
         <attr name="dayOfWeekTextSize" format="dimension"></attr>
         <attr name="dayOfWeekTextColor" format="color"></attr>
         <attr name="dayOfWeekTodayTextColor" format="color"></attr>
+        <attr name="dayOfWeekTodayBackgroundColor" format="color"></attr>
         <attr name="dayOfWeekSundayTextColor" format="color"></attr>
         <attr name="dayOfWeekSaturdayTextColor" format="color"></attr>
 
