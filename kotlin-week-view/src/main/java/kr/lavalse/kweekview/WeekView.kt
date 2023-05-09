@@ -1,5 +1,8 @@
 package kr.lavalse.kweekview
 
+import android.animation.Animator
+import android.animation.AnimatorSet
+import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.*
 import android.text.*
@@ -10,6 +13,7 @@ import android.view.animation.DecelerateInterpolator
 import android.widget.OverScroller
 import androidx.core.view.GestureDetectorCompat
 import androidx.core.view.ViewCompat
+import androidx.core.view.postDelayed
 import kr.lavalse.kweekview.extension.EContext.toDP
 import kr.lavalse.kweekview.extension.EContext.toSP
 import kr.lavalse.kweekview.extension.ELocalDateTime.isBeforeDay
@@ -140,6 +144,7 @@ class WeekView @JvmOverloads constructor(
 
     private var editEventText = ""
     private var editEventColor = Color.WHITE
+    private var editEventDimPaint : Paint = Paint()
 
     private var gridSeparatorColor = Color.WHITE
     private var gridSeparatorStrokeWidth = .0f
@@ -227,6 +232,7 @@ class WeekView @JvmOverloads constructor(
                 clearEditMode()
 
                 invalidate()
+
                 return true
             }
 
@@ -239,18 +245,11 @@ class WeekView @JvmOverloads constructor(
 
         override fun onSingleTapConfirmed(e: MotionEvent): Boolean {
             if(rects.isNotEmpty()){
-                for(r in rects.reversed()){
+                //for(r in rects.reversed()){
+                for(r in rects){
                     if(r.containsTouchPoint(e.x, e.y)){
                         val event = r.originalEvent
-
-                        with(event.startAt!!){
-                            listener?.onWeekEventSelected(
-                                year,
-                                monthValue,
-                                dayOfMonth,
-                                weekOfYear(),
-                                event)
-                        }
+                        listener?.onWeekEventSelected(event)
 
                         playSoundEffect(SoundEffectConstants.CLICK)
 
@@ -376,9 +375,10 @@ class WeekView @JvmOverloads constructor(
             val start = adjustScheduleStartOrEnd(getTimeFromPoint(e.x, e.y), true)
             val end = adjustScheduleStartOrEnd(getTimeFromPoint(e.x, e.y), false)
 
-            createScheduleInternal(start, end)
+            prepareScheduleInternal(start, end)
 
-            invalidate()
+            animator = animatorHighlight()
+            animator?.start()
         }
     }
 
@@ -405,6 +405,8 @@ class WeekView @JvmOverloads constructor(
 
     private var didAttach = false
     private var statePageMove = PageMove.NONE
+
+    private var animator : Animator? = null
 
     init {
         with(context.theme.obtainStyledAttributes(attrs, R.styleable.WeekView, defStyleAttr, 0)){
@@ -540,6 +542,7 @@ class WeekView @JvmOverloads constructor(
 
         if(!didAttach){
             current = today
+
             loadSchedules(current, true)
 
             didAttach = true
@@ -791,13 +794,11 @@ class WeekView @JvmOverloads constructor(
         }
 
         val sortedSpans = spans.flatten().sortedByDescending { it.difference }
-        val spanCount = sortedSpans.size
 
         var j = 0f
         for(span in sortedSpans){
             with(span){
-                val alpha = (255 * ((j + 1) / spanCount)).roundToInt()
-                setBackgroundColor(alpha shl 24 or (backgroundColor and 0x00ffffff))
+                setBackgroundColor(backgroundColor)
 
                 val l = 0f
                 val t = startAt!!.toMinuteOfHours() * 1f
@@ -1009,6 +1010,8 @@ class WeekView @JvmOverloads constructor(
             .reversed()
 
         canvas?.run {
+            save()
+
             clipRect(timelineWidth, headerHeight, width, height)
 
             for (rect in cRects){
@@ -1021,25 +1024,10 @@ class WeekView @JvmOverloads constructor(
 
                 rect.setAbsoluteRect(l, t, r, b)
 
-                painter.color = when(type){
-                    DayType.PAST -> pastEventColor
-                    else -> rect.backgroundColor
-                }
-
-                //drawRoundRect(rect.absoluteRect, eventCornerRadius, eventCornerRadius, painter)
-                drawRect(rect.absoluteRect, painter)
-
-                if(rect.isBrightColor){
-                    strokePainter.color = rect.strokeColor
-                    drawRect(rect.absoluteRect, strokePainter)
-
-                    eventTextPaint.color = eventTextColor
-                }else{
-                    eventTextPaint.color = Color.WHITE
-                }
-
-                drawEventText(this, rect.originalEvent, l, t, r, b)
+                drawEventArea(this, rect, type)
             }
+
+            restore()
         }
     }
 
@@ -1115,38 +1103,50 @@ class WeekView @JvmOverloads constructor(
                 val r = l + (rect.right * widthPerDay)
                 val b = t + (allDayAreaHeight * rect.bottom)
 
-                painter.color = when(type){
-                    DayType.PAST -> pastEventColor
-                    else -> rect.backgroundColor
-                }
-
                 rect.setAbsoluteRect(l, t, r, b)
 
-                //drawRoundRect(rect.absoluteRect, eventCornerRadius, eventCornerRadius, painter)
-                drawRect(rect.absoluteRect, painter)
-
-                if(rect.isBrightColor){
-                    strokePainter.color = rect.strokeColor
-                    drawRect(rect.absoluteRect, strokePainter)
-
-                    eventTextPaint.color = eventTextColor
-                }else{
-                    eventTextPaint.color = Color.WHITE
-                }
-
-                drawEventText(canvas, rect.event, l, t, r, b)
+                drawEventArea(this, rect, type)
             }
 
             restore()
         }
     }
 
+    private fun drawEventArea(canvas: Canvas, rect: WeekRect, type: Int){
+        val absRect = rect.absoluteRect
+
+        painter.color = when(type){
+            DayType.PAST -> pastEventColor
+            else -> rect.backgroundColor
+        }
+
+        with(canvas){
+            drawRect(absRect, painter)
+
+            if(rect.isBrightColor){
+                strokePainter.color = rect.strokeColor
+                drawRect(absRect, strokePainter)
+
+                eventTextPaint.color = eventTextColor
+            }else{
+                eventTextPaint.color = Color.WHITE
+            }
+
+            drawEventText(canvas, rect.originalEvent, absRect.left, absRect.top, absRect.right, absRect.bottom)
+        }
+    }
+
     private fun drawEdit(canvas: Canvas?, firstVisibleIndex: Int, firstDayOfWeek: LocalDateTime, startX: Float){
         val dRects = rects.filter { it.originalEvent is DummyWeekEvent }
+        if(dRects.isEmpty()) return
+
         var offsetX = startX
 
         canvas?.run {
             save()
+
+            // Dim 을 담당한다.
+            drawRect(0f, 0f, width.toFloat(), height.toFloat(), editEventDimPaint)
 
             drawRect(highlightRect, highlightPaint)
             drawRect(highlightRect, highlightStrokePaint)
@@ -1491,7 +1491,7 @@ class WeekView @JvmOverloads constructor(
         if(isEditMode)
             clearEditMode()
 
-        val fdow = firstVisibleDate.withDayOfWeek(today.dayOfWeek).toLocalDate()
+        val fdow = firstVisibleDate.toLocalDate()
         val diff = date.toEpochDay() - fdow.toEpochDay()
 
         val offset = diff * widthPerDay
@@ -1519,29 +1519,79 @@ class WeekView @JvmOverloads constructor(
 
         highlightRect.set(l.toInt(), t, r.toInt(), b)
     }
+
     private fun dismissScheduleInsertion(){
         highlightRect.set(0, 0, 0, 0)
     }
 
-    fun createSchedule(date: LocalDateTime){
+    /**
+     * 특정 위치(날짜시간)에 생성할 스케쥴의 위치를 표시하도록 한다.
+     * 시간은 1시간 단위로 UI 상에 표시가 된다.
+     *
+     * @param date 표시하고자 하는 날짜와 시작시간
+     */
+    fun prepareSchedule(date: LocalDateTime){
         if(!current.isSameWeek(date)){
             current = date.withDayOfWeek(today.dayOfWeek)
 
             moveTo(current.toLocalDate())
-            createSchedule(date)
+            prepareSchedule(date)
 
             return
         }
 
-        val start = adjustScheduleStartOrEnd(date.toTimeMillis(), true)
-        val end = adjustScheduleStartOrEnd(date.toTimeMillis(), false)
+        postDelayed(300) {
+            val (start, end) = date.toTimeMillis().run {
+                adjustScheduleStartOrEnd(this, true) to adjustScheduleStartOrEnd(this, false)
+            }
 
-        createScheduleInternal(start, end)
+            prepareScheduleInternal(start, end)
+            scrollToTime(date.hour, false)
 
-        scrollToTime(date.hour, false)
+            if(animator != null){
+                animator?.cancel()
+                animator = null
+            }
+
+            animator = animatorHighlight()
+            animator?.start()
+        }
     }
 
-    private fun createScheduleInternal(start: LocalDateTime, end: LocalDateTime){
+    /**
+     * ID 값을 통하여 이벤트를 지우도록 한다. View 상에서 UI 만 삭제되기 때문에
+     * 모델 상의 데이터는 따로 삭제 해주어야 한다.
+     *
+     * @param id 이벤트의 ID 값
+     */
+    fun removeScheduleById(id: String){
+        rects.removeIf { it.originalEvent.id == id }
+
+        invalidate()
+    }
+
+    /**
+     * 스케쥴을 등록한다
+     *
+     * @param event UI 로 사용할 이벤트를 넣는다.
+     */
+    fun addSchedule(event: WeekEvent){
+        if(event.startTimeInMillis > event.endTimeInMillis)
+            throw IllegalArgumentException("시작시간이 끝 시간보다 큼")
+
+        val list = sortAndSplitSchedules(listOf(event))
+
+        dispatchCommonEvents(list.toMutableList())
+
+        invalidate()
+    }
+
+    /**
+     * 현재 UI에 보여지는 연/월/년 기준 주 수 를 전달 해 준다.
+     */
+    fun getCurrentDate() = current.run { listOf(year, monthValue, weekOfYear()) }
+
+    private fun prepareScheduleInternal(start: LocalDateTime, end: LocalDateTime){
         if(isEditMode){
             clearEditMode()
         }
@@ -1563,7 +1613,6 @@ class WeekView @JvmOverloads constructor(
         }
 
         showScheduleInsertion(start.toLocalDate())
-
         positioningTempEventRectOffset(listOf(editEvent!!))
     }
 
@@ -1572,6 +1621,33 @@ class WeekView @JvmOverloads constructor(
 
     private fun adjustScheduleStartOrEnd(ldt: LocalDateTime, isStartOrEnd: Boolean)
             = ldt.run { withTime(if(isStartOrEnd) hour else hour + 1, 0, 0) }
+
+    private fun animatorHighlight() : Animator {
+        val anim1 = ValueAnimator.ofArgb(Color.TRANSPARENT, editEventColor).apply {
+            addUpdateListener { editEvent!!.setBackgroundColor(it.animatedValue as Int) }
+        }
+
+        val anim2 = ValueAnimator.ofArgb(Color.TRANSPARENT, highlightPaint.color).apply {
+            addUpdateListener { highlightPaint.color = it.animatedValue as Int }
+        }
+
+        val anim3 = ValueAnimator.ofArgb(Color.TRANSPARENT, highlightStrokePaint.color).apply {
+            addUpdateListener { highlightStrokePaint.color = it.animatedValue as Int }
+        }
+
+        val anim4 = ValueAnimator.ofArgb(Color.TRANSPARENT, 0x80FFFFFF.toInt()).apply {
+            addUpdateListener { editEventDimPaint.color = it.animatedValue as Int; invalidate() }
+        }
+
+        val animSet = AnimatorSet().apply {
+            duration = 250
+            interpolator = DecelerateInterpolator()
+
+            playTogether(anim1, anim2, anim3, anim4)
+        }
+
+        return animSet
+    }
 
     interface OnWeekViewListener {
         /**
@@ -1584,9 +1660,31 @@ class WeekView @JvmOverloads constructor(
          * @param week 해당 주의 연 기준 주일 수
          */
         fun onWeekChanged(year: Int, month: Int, date: Int, week: Int) : List<WeekEvent>?
-        fun onWeekEventSelected(year: Int, month: Int, date: Int, week: Int, event: WeekEvent?)
+
+        /**
+         * 선택된 이벤트에 대한 데이터를 넘겨준다
+         *
+         * @param event UI 에서 사용하는 이벤트 데이터
+         */
+        fun onWeekEventSelected(event: WeekEvent)
+
+        /**
+         * 비어있는 이벤트에 대해서 추가하고자 할 때 사용된다. 해당 메소드는 기본적으로 롱클릭으로 실행된다.
+         * 넘겨주는 데이터는 롱클릭이 일어난 부분의 start 시간과 end 시간을 milliseconds 값으로 알려주게 된다.
+         *
+         * @param start 시작시간
+         * @param end 종료시간
+         */
         fun onEmptyEventWillBeAdded(start: Long, end: Long)
 
+        /**
+         * 주가 변경될 때마다 불리는 메소드로, @see[onWeekChanged] 와는 다르게 현재의 주만 뿌려준다.
+         *
+         * @param year 해당 주 첫번째 일의 연도
+         * @param month 해당 주 첫번째 일의 월 (+1 하지 않아도 됌)
+         * @param date 해당 주 첫번째 일의 일자
+         * @param week 해당 주의 연 기준 주일 수
+         */
         fun onCurrentWeekChanged(year: Int, month: Int, date: Int, week: Int)
     }
 }

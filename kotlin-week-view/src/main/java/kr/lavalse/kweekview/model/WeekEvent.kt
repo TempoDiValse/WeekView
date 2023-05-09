@@ -35,6 +35,14 @@ open class WeekEvent: Cloneable {
     val strokeColor get() = if(backgroundColor > 0xFFDCDCDC.toInt()) 0xFF999999.toInt() else -1
     val isBrightColor get() = strokeColor != -1
 
+    constructor(id: String, start: LocalDateTime, end: LocalDateTime, isAllDay: Boolean){
+        this.id = id
+        setStartAndEndDate(start, end, isAllDay)
+    }
+    constructor(id: String, start: LocalDateTime, end: LocalDateTime) : this(id, start, end, false)
+
+    constructor(id: String) : this(id, LocalDateTime.now(), LocalDateTime.now()){ this.id = id }
+
     fun isAllDay() = isAllDay
     fun setBackgroundColor(code: String){ this._color = Color.parseColor(code) }
     fun setBackgroundColor(value: Int){ this._color = value }

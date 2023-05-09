@@ -2,11 +2,7 @@ package kr.lavalse.kweekview.model
 
 import kr.lavalse.kweekview.extension.ELocalDateTime.toText
 
-class DummyWeekEvent : WeekEvent() {
-    init {
-        id = "-1"
-    }
-
+class DummyWeekEvent : WeekEvent("-1") {
     override fun toString(): String {
         return "Dummy ${startAt!!.toText("yyyy/MM/dd HH:mm")} ~ ${endAt!!.toText("yyyy/MM/dd HH:mm")}"
     }

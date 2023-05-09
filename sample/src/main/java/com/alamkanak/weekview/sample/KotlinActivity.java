@@ -3,10 +3,13 @@ package com.alamkanak.weekview.sample;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+
+import org.jetbrains.annotations.NotNull;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
@@ -15,11 +18,14 @@ import java.time.LocalTime;
 import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 
 import kr.lavalse.kweekview.model.WeekEvent;
 import kr.lavalse.kweekview.WeekView;
 
 public class KotlinActivity extends AppCompatActivity {
+    private WeekEvent selected = null;
+
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -46,8 +52,16 @@ public class KotlinActivity extends AppCompatActivity {
             }
 
             @Override
-            public void onWeekEventSelected(int year, int month, int date, int week, @Nullable WeekEvent event) {
-                System.out.println("Selected: "+event);
+            public void onWeekEventSelected(@NotNull WeekEvent event) {
+                if(event.isAllDay()){
+                    Toast.makeText(KotlinActivity.this, "여기는 종일 부분", Toast.LENGTH_SHORT).show();
+
+                    return;
+                }
+
+                Toast.makeText(KotlinActivity.this, event.getTitle(), Toast.LENGTH_SHORT).show();
+
+                selected = event;
             }
 
             @Nullable
@@ -55,8 +69,7 @@ public class KotlinActivity extends AppCompatActivity {
             public List<WeekEvent> onWeekChanged(int year, int month, int date, int week) {
                 List<WeekEvent> events = new ArrayList<>();
 
-                WeekEvent e1 = new WeekEvent();
-                e1.setId("AF001"+date);
+                WeekEvent e1 = new WeekEvent("AF001"+date);
                 e1.setBackgroundColor("#333333");
                 e1.setTitle("이벤트 A(13:30 ~ 14:00)");
 
@@ -75,8 +88,7 @@ public class KotlinActivity extends AppCompatActivity {
                 events.add(e1);
 
                 // 15:20 ~ 16:30
-                WeekEvent e2 = new WeekEvent();
-                e2.setId("AF002"+date);
+                WeekEvent e2 = new WeekEvent("AF002"+date);
                 e2.setBackgroundColor("#E37964");
                 e2.setTitle("이벤트 B(15:20 ~ 16:30)");
 
@@ -94,8 +106,7 @@ public class KotlinActivity extends AppCompatActivity {
                 events.add(e2);
 
                 // 14:00 ~ 16:00
-                WeekEvent e3 = new WeekEvent();
-                e3.setId("AF003"+date);
+                WeekEvent e3 = new WeekEvent("AF003"+date);
                 e3.setBackgroundColor("#015AEF");
                 e3.setTitle("이벤트 C(14:00 ~ 16:00)");
 
@@ -111,8 +122,7 @@ public class KotlinActivity extends AppCompatActivity {
                 e3.setStartAndEndDate(startAt, endAt, false);
                 events.add(e3);
 
-                WeekEvent e4 = new WeekEvent();
-                e4.setId("AF009"+date);
+                WeekEvent e4 = new WeekEvent("AF009"+date);
                 e4.setBackgroundColor("#FFD034");
                 e4.setTitle("이벤트 D(17:20 ~ 19:50)");
 
@@ -129,8 +139,7 @@ public class KotlinActivity extends AppCompatActivity {
                 e4.setStartAndEndDate(startAt, endAt, false);
                 events.add(e4);
 
-                WeekEvent e5 = new WeekEvent();
-                e5.setId("AF010"+date);
+                WeekEvent e5 = new WeekEvent("AF010"+date);
                 e5.setBackgroundColor("#EA29FA");
                 e5.setTitle("이벤트 D(15:50 ~ 18:00)");
 
@@ -147,8 +156,7 @@ public class KotlinActivity extends AppCompatActivity {
                 events.add(e5);
 
                 // MON ~ WEDS
-                WeekEvent a1 = new WeekEvent();
-                a1.setId("AF004"+date);
+                WeekEvent a1 = new WeekEvent("AF004"+date);
                 a1.setBackgroundColor("#38F132");
                 a1.setTitle("AF004 (MONDAY ~ WEDNESDAY)");
                 startAt
@@ -164,9 +172,8 @@ public class KotlinActivity extends AppCompatActivity {
                 events.add(a1);
 
                 // TUES ~ WEDS
-                WeekEvent a2 = new WeekEvent();
-                a2.setId("AF005"+date);
-                a2.setBackgroundColor("#FAFFFF");
+                WeekEvent a2 = new WeekEvent("AF005"+date);
+                a2.setBackgroundColor("#6A5D19");
                 a2.setTitle("AF005 (TUESDAY ~ WEDNESDAY)");
 
                 startAt = LocalDateTime.of(LocalDate.of(year, month, date), LocalTime.of(0, 0, 0))
@@ -178,9 +185,8 @@ public class KotlinActivity extends AppCompatActivity {
                 events.add(a2);
 
                 // FRI
-                WeekEvent a3 = new WeekEvent();
+                WeekEvent a3 = new WeekEvent("AF006"+date);
                 a3.setTitle("AF006 (FRIDAY ONLY)");
-                a3.setId("AF006"+date);
                 a3.setBackgroundColor("#FAAA32");
                 startAt = LocalDateTime.of(LocalDate.of(year, month, date), LocalTime.of(0, 0, 0))
                         .with(TemporalAdjusters.nextOrSame(DayOfWeek.FRIDAY));
@@ -189,9 +195,8 @@ public class KotlinActivity extends AppCompatActivity {
                 events.add(a3);
 
                 // SAT ~ MON
-                WeekEvent a4 = new WeekEvent();
+                WeekEvent a4 = new WeekEvent("AF007"+date);
                 a4.setTitle("AF007 (SAT ~ MON)");
-                a4.setId("AF007"+date);
                 a4.setBackgroundColor("#FA0032");
 
                 startAt = LocalDateTime.of(LocalDate.of(year, month, date), LocalTime.of(0, 0, 0))
@@ -203,9 +208,8 @@ public class KotlinActivity extends AppCompatActivity {
                 events.add(a4);
 
                 // SUN ~ THUR
-                WeekEvent a5 = new WeekEvent();
+                WeekEvent a5 = new WeekEvent("AF008"+date);
                 a5.setTitle("AF008 (SUN ~ THUR)");
-                a5.setId("AF008"+date);
                 a5.setBackgroundColor("#ADFF32");
                 startAt = LocalDateTime.of(LocalDate.of(year, month, date), LocalTime.of(0, 0, 0))
                         .with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY));
@@ -232,55 +236,75 @@ public class KotlinActivity extends AppCompatActivity {
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
 
         switch(item.getItemId()){
-            /*
-            case R.id.action_highlight:{
-                WeekView view = ((WeekView) findViewById(R.id.weekView));
-                LocalDate datetime = LocalDate.now()
-                        .with(TemporalAdjusters.nextOrSame(DayOfWeek.FRIDAY));
-
-                //view.showScheduleInsertion(datetime);
-            }
-            break;
-            */
             case R.id.action_prev: {
-                WeekView view = ((WeekView) findViewById(R.id.weekView));
+                WeekView view = (WeekView) findViewById(R.id.weekView);
 
                 view.moveToPrev();
             }
             break;
 
             case R.id.action_next: {
-                WeekView view = ((WeekView) findViewById(R.id.weekView));
+                WeekView view = (WeekView) findViewById(R.id.weekView);
 
                 view.moveToNext();
             }
             break;
 
             case R.id.action_scroll_to: {
-                WeekView view = ((WeekView) findViewById(R.id.weekView));
+                WeekView view = (WeekView) findViewById(R.id.weekView);
 
                 view.scrollToTime(6, true);
             }
             break;
 
             case R.id.action_today: {
-                WeekView view = ((WeekView) findViewById(R.id.weekView));
+                WeekView view = (WeekView) findViewById(R.id.weekView);
 
                 view.moveToToday();
             }
             break;
 
-            case R.id.action_create: {
-                WeekView view = ((WeekView) findViewById(R.id.weekView));
+            case R.id.action_prepare: {
+                WeekView view = (WeekView) findViewById(R.id.weekView);
 
                 LocalDateTime ldt = LocalDateTime.now()
                         .withDayOfMonth(12)
                         .withHour(15)
                         .withMinute(20);
 
-                view.createSchedule(ldt);
+                view.prepareSchedule(ldt);
             }
             break;
+
+            case R.id.action_add: {
+                WeekView view = (WeekView) findViewById(R.id.weekView);
+
+                Random r = new Random();
+                int v = r.nextInt(7);
+
+                LocalDateTime start = LocalDateTime.now()
+                        .with(TemporalAdjusters.nextOrSame(DayOfWeek.of(v + 1)));
+                LocalDateTime end = start
+                        .plusHours(1);
+
+                WeekEvent e = new WeekEvent("fasdfasdf", start, end);
+                e.setTitle("타이틀~");
+
+                view.addSchedule(e);
+            }
+            break;
+
+            case R.id.action_remove: {
+                WeekView view = (WeekView) findViewById(R.id.weekView);
+
+                if(selected == null){
+                    Toast.makeText(this, "Select a schedule to remove", Toast.LENGTH_SHORT).show();
+                }else{
+                    view.removeScheduleById(selected.getId());
+
+                    selected = null;
+                }
+            }
         }
 
         return super.onOptionsItemSelected(item);
