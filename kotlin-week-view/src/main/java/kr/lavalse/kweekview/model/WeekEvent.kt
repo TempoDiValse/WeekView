@@ -37,10 +37,16 @@ open class WeekEvent: Cloneable {
 
     constructor(id: String, start: LocalDateTime, end: LocalDateTime, isAllDay: Boolean){
         this.id = id
+
         setStartAndEndDate(start, end, isAllDay)
     }
     constructor(id: String, start: LocalDateTime, end: LocalDateTime) : this(id, start, end, false)
 
+    /**
+     * ID 값은 모델 이벤트와 매칭 될 수 있도록 꼭 입력을 해준다.
+     *
+     * @param id 모델 이벤트의 ID
+     */
     constructor(id: String) : this(id, LocalDateTime.now(), LocalDateTime.now()){ this.id = id }
 
     fun isAllDay() = isAllDay
