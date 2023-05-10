@@ -11,6 +11,7 @@ import android.util.AttributeSet
 import android.view.*
 import android.view.animation.DecelerateInterpolator
 import android.widget.OverScroller
+import androidx.core.animation.doOnEnd
 import androidx.core.view.GestureDetectorCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.postDelayed
@@ -221,6 +222,7 @@ class WeekView @JvmOverloads constructor(
 
     /** 현재일 이전 데이터로 이동이 필요한 경우, true 설정 하도록 한다. */
     private var canMovePastDate = false
+    private var canEditLongClick = false
 
     private var listener : OnWeekViewListener? = null
 
@@ -230,14 +232,6 @@ class WeekView @JvmOverloads constructor(
     private var detector: GestureDetectorCompat
     private val gestureListener = object : GestureDetector.SimpleOnGestureListener() {
         override fun onDown(e: MotionEvent): Boolean {
-            if(isEditMode){
-                clearEditMode()
-
-                invalidate()
-
-                return true
-            }
-
             scroller.forceFinished(true)
 
             scrollToNearestOrigin()
@@ -246,6 +240,24 @@ class WeekView @JvmOverloads constructor(
         }
 
         override fun onSingleTapConfirmed(e: MotionEvent): Boolean {
+            println("[SingleTapConfirmed]")
+            if(!canEditLongClick){
+                if(isEditMode){
+                    val (start, end) = getTimeFromPoint(e.x, e.y).run {
+                        adjustScheduleStartOrEnd(this, true) to adjustScheduleStartOrEnd(this, false)
+                    }
+
+                    if(editEvent!!.run { startAt == start && endAt == end }){
+                        clearEditMode()
+                        invalidate()
+
+                        return true
+                    }
+                }
+
+                changeWithEditMode(e)
+            }
+
             if(rects.isNotEmpty()){
                 //for(r in rects.reversed()){
                 for(r in rects){
@@ -350,9 +362,6 @@ class WeekView @JvmOverloads constructor(
             when(currentFlingDirection){
                 Scroll.LEFT, Scroll.RIGHT -> {
                     val velocity = vx * Scroll.X_SPEED
-                    val dx = e1.x - e2.x
-                    println("D: $dx V: $velocity")
-
 
                     scroller.fling(
                         origin.x.toInt(), origin.y.toInt(),
@@ -380,13 +389,25 @@ class WeekView @JvmOverloads constructor(
             if(!isLongPressed)
                 isLongPressed = true
 
-            val start = adjustScheduleStartOrEnd(getTimeFromPoint(e.x, e.y), true)
-            val end = adjustScheduleStartOrEnd(getTimeFromPoint(e.x, e.y), false)
+            if(canEditLongClick)
+                changeWithEditMode(e)
+        }
+
+        private fun changeWithEditMode(e: MotionEvent){
+            if(e.y < headerHeight) return
+
+            val (start, end) = getTimeFromPoint(e.x, e.y).run {
+                adjustScheduleStartOrEnd(this, true) to adjustScheduleStartOrEnd(this, false)
+            }
 
             prepareScheduleInternal(start, end)
 
-            animator = animatorHighlight()
-            animator?.start()
+            if(animator != null){
+                invalidate()
+            }else{
+                animator = animatorHighlight()
+                animator?.start()
+            }
         }
     }
 
@@ -599,7 +620,6 @@ class WeekView @JvmOverloads constructor(
 
         current.run { listener?.onCurrentWeekChanged(year, monthValue, dayOfMonth, weekOfYear()) }
     }
-
 
     override fun onDraw(canvas: Canvas?) {
         super.onDraw(canvas)
@@ -1396,6 +1416,7 @@ class WeekView @JvmOverloads constructor(
 
         removeOnlyDummyEvent()
 
+        animator = null
         isEditMode = false
         editEvent = null
     }
@@ -1460,7 +1481,6 @@ class WeekView @JvmOverloads constructor(
      * 다음 주로 이동하도록 한다.
      */
     fun moveToNext(){
-        println("conditions: ${doScrolling()} S: $currentScrollDirection F: $currentFlingDirection")
         if(doScrolling() || statePageMove != PageMove.NONE) return
 
         statePageMove = PageMove.NEXT_MONTH
@@ -1545,6 +1565,10 @@ class WeekView @JvmOverloads constructor(
      * @param date 표시하고자 하는 날짜와 시작시간
      */
     fun prepareSchedule(date: LocalDateTime){
+        // 오늘 기준 이전일 이면 편집을 하지 못하도록 한다.
+        if(today.isBeforeDay(date))
+            throw IllegalArgumentException("기준일 ($today) 보다 이전 일 입니다.")
+
         if(!current.isSameWeek(date)){
             current = date.withDayOfWeek(today.dayOfWeek)
 
@@ -1606,18 +1630,7 @@ class WeekView @JvmOverloads constructor(
     fun getCurrentDate() = current.run { listOf(year, monthValue, weekOfYear()) }
 
     private fun prepareScheduleInternal(start: LocalDateTime, end: LocalDateTime){
-        if(isEditMode){
-            clearEditMode()
-        }
-
         isEditMode = true
-
-        // 오늘 기준 이전일 이면 롱클릭 편집을 하지 못하도록 한다.
-        if(today.isBeforeDay(start)){
-            isEditMode = false
-
-            return
-        }
 
         editEvent = DummyWeekEvent().apply {
             title = editEventText
