@@ -74,11 +74,7 @@ open class WeekEvent: Cloneable {
         this.endAt = _end
     }
 
-    override fun equals(other: Any?): Boolean = other?.let { it as WeekEvent
-        it.id == id
-            && it.startTimeInMillis == startTimeInMillis
-            && it.endTimeInMillis == endTimeInMillis
-    } ?: false
+    override fun equals(other: Any?): Boolean = other?.let { it as WeekEvent; it.id == id } ?: false
 
     override fun toString(): String {
         val start = startAt?.toText("yyyy/MM/dd HH:mm") ?: "NULL"

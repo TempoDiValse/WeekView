@@ -256,6 +256,8 @@ class WeekView @JvmOverloads constructor(
                 }
 
                 changeWithEditMode(e)
+
+                return super.onSingleTapConfirmed(e)
             }
 
             if(rects.isNotEmpty()){
@@ -602,11 +604,31 @@ class WeekView @JvmOverloads constructor(
                     weekOfYear(),
                 ) ?: listOf()
 
-                schedules.addAll(sortAndSplitSchedules(pool))
+                // 중복된 아이디가 있는 경우에는 삭제하도록 한다.
+                val distinct = pool.distinctBy { it.id }
+
+                // 데이터가 비어있는 경우에는 그대로 삽입하도록 한다.
+                if(schedules.isEmpty()) {
+                    schedules.addAll(sortAndSplitSchedules(distinct))
+                } else {
+                    // 데이터가 있는 경우에는 중복체크를 한 후 삽입하도록 한다.
+                    val mDistinct = distinct.toMutableList()
+
+                    for(s in schedules){
+                        val index = mDistinct.indexOfLast { c-> s.id == c.id }
+                        if(index == -1) continue
+
+                        mDistinct.removeAt(index)
+                    }
+
+                    schedules.addAll(sortAndSplitSchedules(mDistinct))
+                }
             }
 
             date = date.plusWeeks(1)
         }
+
+        println(schedules)
 
         schedules.groupBy { if(it.isAllDay()) "A" else "C" }
             .forEach { (k, l) ->
@@ -1243,13 +1265,6 @@ class WeekView @JvmOverloads constructor(
                     }
 
                     MotionEvent.ACTION_UP -> {
-                        if(isEditMode){
-                            val rect = rects.find { it.originalEvent is DummyWeekEvent } ?: return@run true
-                            val event = rect.originalEvent
-
-                            listener?.onEmptyEventWillBeAdded(event.startTimeInMillis, event.endTimeInMillis)
-                        }
-
                         if(!isZooming && currentFlingDirection == Scroll.NONE){
                             if(currentScrollDirection.let { it == Scroll.LEFT || it == Scroll.RIGHT}){
                                 scrollToNearestOrigin()
@@ -1617,12 +1632,29 @@ class WeekView @JvmOverloads constructor(
         if(event.startTimeInMillis > event.endTimeInMillis)
             throw IllegalArgumentException("시작시간이 끝 시간보다 큼")
 
+        if(hasSchedule(event))
+            throw IllegalArgumentException("이미 등록되어 있는 스케쥴입니다. [${event.id}]")
+
         val list = sortAndSplitSchedules(listOf(event))
 
         dispatchCommonEvents(list.toMutableList())
 
         invalidate()
     }
+
+    /**
+     * 현재 스케쥴 리스트에 스케쥴이 있는지 확인한다.
+     *
+     * @param event 찾고자 하는 이벤트
+     */
+    fun hasSchedule(event: WeekEvent) : Boolean = hasScheduleById(event.id)
+
+    /**
+     * ID 값을 통하여 현재 스케쥴 리스트에 스케쥴이 있는지 확인한다.
+     *
+     * @param id 찾고자 하는 이벤트 ID 값
+     */
+    fun hasScheduleById(id: String) : Boolean = rects.any { it.originalEvent.id == id }
 
     /**
      * 현재 UI에 보여지는 연/월/년 기준 주 수 를 전달 해 준다.
@@ -1641,6 +1673,8 @@ class WeekView @JvmOverloads constructor(
 
         showScheduleInsertion(start.toLocalDate())
         positioningTempEventRectOffset(listOf(editEvent!!))
+
+        listener?.onEmptyEventWillBeAdded(editEvent!!.startTimeInMillis, editEvent!!.endTimeInMillis)
     }
 
     private fun adjustScheduleStartOrEnd(times: Long, isStartOrEnd: Boolean)
