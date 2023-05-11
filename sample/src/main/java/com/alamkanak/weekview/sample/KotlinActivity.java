@@ -75,9 +75,9 @@ public class KotlinActivity extends AppCompatActivity {
 
                 LocalDateTime startAt
                         = LocalDateTime.of(
-                            LocalDate.of(year, month, date),
-                            LocalTime.of(13, 30, 0))
-                        .with(TemporalAdjusters.nextOrSame(DayOfWeek.WEDNESDAY));
+                            LocalDate.of(year, 5, 15),
+                            LocalTime.of(13, 30, 0));
+                        //.with(TemporalAdjusters.nextOrSame(DayOfWeek.WEDNESDAY));
 
                 LocalDateTime endAt
                         = LocalDateTime.of(startAt.toLocalDate(), startAt.toLocalTime())
@@ -94,17 +94,19 @@ public class KotlinActivity extends AppCompatActivity {
 
                 startAt
                     = LocalDateTime.of(
-                            LocalDate.of(year, month, date),
-                            LocalTime.of(15, 20, 0)
-                    ).with(TemporalAdjusters.nextOrSame(DayOfWeek.WEDNESDAY));
+                            LocalDate.of(year, 3, 15),
+                            LocalTime.of(15, 20, 0));
+                //.with(TemporalAdjusters.nextOrSame(DayOfWeek.WEDNESDAY));
 
                 endAt = LocalDateTime.of(startAt.toLocalDate(), startAt.toLocalTime())
                         .plusHours(1)
+                        .plusMonths(4)
                         .withMinute(30);
 
                 e2.setStartAndEndDate(startAt, endAt, false);
                 events.add(e2);
 
+                /*
                 // 14:00 ~ 16:00
                 WeekEvent e3 = new WeekEvent("AF003"+date);
                 e3.setBackgroundColor("#015AEF");
@@ -112,9 +114,10 @@ public class KotlinActivity extends AppCompatActivity {
 
                 startAt
                     = LocalDateTime.of(
-                        LocalDate.of(year, month, date),
+                        LocalDate.of(year, 5, 13),
                         LocalTime.of(14, 0, 0)
-                    ).with(TemporalAdjusters.nextOrSame(DayOfWeek.WEDNESDAY));
+                    );
+                        //.with(TemporalAdjusters.nextOrSame(DayOfWeek.WEDNESDAY));
                 endAt = LocalDateTime.of(startAt.toLocalDate(), startAt.toLocalTime())
                         .plusHours(14)
                         .withMinute(0);
@@ -217,6 +220,7 @@ public class KotlinActivity extends AppCompatActivity {
                         .plusDays(4);
                 a5.setStartAndEndDate(startAt, endAt, true);
                 events.add(a5);
+                */
 
                 return events;
             }

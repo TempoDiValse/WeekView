@@ -595,7 +595,7 @@ class WeekView @JvmOverloads constructor(
         val schedules = mutableListOf<WeekEvent>()
         var date = weekDate.minusWeeks(1)
 
-        for(day in 0 until DEFAULT_PRELOAD_WEEK_DATA_RANGE){
+        for(dataRange in 0 until DEFAULT_PRELOAD_WEEK_DATA_RANGE){
             with(date){
                 val pool = listener?.onWeekChanged(
                     year,
@@ -625,10 +625,14 @@ class WeekView @JvmOverloads constructor(
                 }
             }
 
+            if(dataRange == 0)
+                schedules.removeIf { it.endTimeInMillis < date.toTimeMillis() }
+
+            if(dataRange == DEFAULT_PRELOAD_WEEK_DATA_RANGE - 1)
+                schedules.removeIf { it.startTimeInMillis > date.toTimeMillis() }
+
             date = date.plusWeeks(1)
         }
-
-        println(schedules)
 
         schedules.groupBy { if(it.isAllDay()) "A" else "C" }
             .forEach { (k, l) ->
@@ -1723,7 +1727,7 @@ class WeekView @JvmOverloads constructor(
         fun onWeekChanged(year: Int, month: Int, date: Int, week: Int) : List<WeekEvent>?
 
         /**
-         * 선택된 이벤트에 대한 데이터를 넘겨준다
+         * 선택된 이벤트에 대한 데이터를 넘겨준다. Edit 모드가 단일 클릭에서 이뤄지는 경우 호출이 되지 않는다.
          *
          * @param event UI 에서 사용하는 이벤트 데이터
          */
