@@ -1440,6 +1440,8 @@ class WeekView @JvmOverloads constructor(
         animator = null
         isEditMode = false
         editEvent = null
+
+        listener?.onEmptyEventDismissed()
     }
 
     private fun removeOnlyDummyEvent(){
@@ -1739,13 +1741,18 @@ class WeekView @JvmOverloads constructor(
         fun onWeekEventSelected(event: WeekEvent)
 
         /**
-         * 비어있는 이벤트에 대해서 추가하고자 할 때 사용된다. 해당 메소드는 기본적으로 롱클릭으로 실행된다.
-         * 넘겨주는 데이터는 롱클릭이 일어난 부분의 start 시간과 end 시간을 milliseconds 값으로 알려주게 된다.
+         * 비어있는 이벤트에 대해서 추가하고자 할 때 사용된다. 해당 메소드는 기본적으로 클릭으로 실행된다.
+         * 넘겨주는 데이터는 클릭이 일어난 부분의 start 시간과 end 시간을 milliseconds 값으로 알려주게 된다.
          *
          * @param start 시작시간
          * @param end 종료시간
          */
         fun onEmptyEventWillBeAdded(start: Long, end: Long)
+
+        /**
+         * 이벤트 편집모드가 바뀔 때 호출된다.
+         */
+        fun onEmptyEventDismissed()
 
         /**
          * 주가 변경될 때마다 불리는 메소드로, @see[onWeekChanged] 와는 다르게 현재의 주만 뿌려준다.
