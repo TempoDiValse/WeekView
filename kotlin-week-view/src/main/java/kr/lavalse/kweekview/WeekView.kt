@@ -644,7 +644,9 @@ class WeekView @JvmOverloads constructor(
 
         current = weekDate
 
-        current.run { listener?.onCurrentWeekChanged(year, monthValue, dayOfMonth, weekOfYear()) }
+        current.run {
+            listener?.onCurrentWeekChanged(year, monthValue, dayOfMonth, weekOfYear())
+        }
     }
 
     override fun onDraw(canvas: Canvas?) {
@@ -1538,8 +1540,11 @@ class WeekView @JvmOverloads constructor(
      * @param date 지정일
      */
     fun moveTo(date: LocalDate){
-        if(statePageMove == PageMove.NONE)
+        if(statePageMove == PageMove.NONE){
+            current = date.toLocalDateTime()
+
             statePageMove = PageMove.WHERE
+        }
 
         if(isEditMode)
             clearEditMode()

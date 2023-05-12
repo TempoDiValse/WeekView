@@ -309,6 +309,20 @@ public class KotlinActivity extends AppCompatActivity {
                     selected = null;
                 }
             }
+
+            case R.id.action_move_random: {
+                WeekView view = (WeekView) findViewById(R.id.weekView);
+
+                Random r = new Random();
+                int v = r.nextInt(7);
+
+                LocalDate ld = LocalDate.now()
+                        .plusWeeks(v);
+
+                view.moveTo(ld);
+            }
+
+            break;
         }
 
         return super.onOptionsItemSelected(item);

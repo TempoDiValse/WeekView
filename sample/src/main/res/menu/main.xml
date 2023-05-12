@@ -19,6 +19,8 @@
         android:title="Add" />
     <item android:id="@+id/action_remove"
         android:title="Remove" />
+    <item android:id="@+id/action_move_random"
+        android:title="RandomMove" />
     <!--
     <item android:id="@+id/action_today"
         android:title="@string/action_today"
