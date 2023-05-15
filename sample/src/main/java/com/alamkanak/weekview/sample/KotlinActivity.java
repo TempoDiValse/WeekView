@@ -35,6 +35,11 @@ public class KotlinActivity extends AppCompatActivity {
         WeekView view = ((WeekView) findViewById(R.id.weekView));
         view.setOnWeekChangeListener(new WeekView.OnWeekViewListener() {
             @Override
+            public void onEmptyEventDismissed() {
+
+            }
+
+            @Override
             public void onCurrentWeekChanged(int year, int month, int date, int week) {
                 LocalDate startLd = LocalDate.of(year, month, date);
                 LocalDate endLd = startLd.plusDays(6);
@@ -75,7 +80,7 @@ public class KotlinActivity extends AppCompatActivity {
 
                 LocalDateTime startAt
                         = LocalDateTime.of(
-                            LocalDate.of(year, 5, 15),
+                            LocalDate.of(year, 5, 16),
                             LocalTime.of(13, 30, 0));
                         //.with(TemporalAdjusters.nextOrSame(DayOfWeek.WEDNESDAY));
 
@@ -94,19 +99,17 @@ public class KotlinActivity extends AppCompatActivity {
 
                 startAt
                     = LocalDateTime.of(
-                            LocalDate.of(year, 3, 15),
+                            LocalDate.of(year, 5, 18),
                             LocalTime.of(15, 20, 0));
                 //.with(TemporalAdjusters.nextOrSame(DayOfWeek.WEDNESDAY));
 
                 endAt = LocalDateTime.of(startAt.toLocalDate(), startAt.toLocalTime())
                         .plusHours(1)
-                        .plusMonths(4)
                         .withMinute(30);
 
                 e2.setStartAndEndDate(startAt, endAt, false);
                 events.add(e2);
 
-                /*
                 // 14:00 ~ 16:00
                 WeekEvent e3 = new WeekEvent("AF003"+date);
                 e3.setBackgroundColor("#015AEF");
@@ -140,7 +143,7 @@ public class KotlinActivity extends AppCompatActivity {
                         .withMinute(30);
 
                 e4.setStartAndEndDate(startAt, endAt, false);
-                events.add(e4);
+                //events.add(e4);
 
                 WeekEvent e5 = new WeekEvent("AF010"+date);
                 e5.setBackgroundColor("#EA29FA");
@@ -156,7 +159,72 @@ public class KotlinActivity extends AppCompatActivity {
                         .plusHours(2);
 
                 e5.setStartAndEndDate(startAt, endAt, false);
-                events.add(e5);
+                //events.add(e5);
+
+                WeekEvent e6 = new WeekEvent("AF011"+date);
+                e6.setBackgroundColor("#00D681");
+                e6.setTitle("이벤트 E(15:00 ~ 15:10)");
+
+                startAt
+                        = LocalDateTime.of(
+                        LocalDate.of(year, month, date),
+                        LocalTime.of(11, 0, 0)
+                ).with(TemporalAdjusters.nextOrSame(DayOfWeek.THURSDAY));
+
+                endAt = LocalDateTime.of(startAt.toLocalDate(), startAt.toLocalTime())
+                        .plusMinutes(10);
+
+                e6.setStartAndEndDate(startAt, endAt, false);
+                events.add(e6);
+
+                WeekEvent e7 = new WeekEvent("AF012"+date);
+                e7.setBackgroundColor("#008A53");
+                e7.setTitle("이벤트 E(15:20 ~ 15:25)");
+
+                startAt
+                        = LocalDateTime.of(
+                        LocalDate.of(year, month, date),
+                        LocalTime.of(11, 20, 0)
+                ).with(TemporalAdjusters.nextOrSame(DayOfWeek.THURSDAY));
+
+                endAt = LocalDateTime.of(startAt.toLocalDate(), startAt.toLocalTime())
+                        .plusMinutes(5);
+
+                e7.setStartAndEndDate(startAt, endAt, false);
+                events.add(e7);
+
+                WeekEvent e8 = new WeekEvent("AF013"+date);
+                e8.setBackgroundColor("#004A2C");
+                e8.setTitle("이벤트 E(15:32 ~ 15:40)");
+
+                startAt
+                        = LocalDateTime.of(
+                        LocalDate.of(year, month, date),
+                        LocalTime.of(11, 32, 0)
+                ).with(TemporalAdjusters.nextOrSame(DayOfWeek.THURSDAY));
+
+                endAt = LocalDateTime.of(startAt.toLocalDate(), startAt.toLocalTime())
+                        .plusMinutes(8);
+
+                e8.setStartAndEndDate(startAt, endAt, false);
+                events.add(e8);
+
+                WeekEvent e9 = new WeekEvent("AF014"+date);
+                e9.setBackgroundColor("#00C979");
+                e9.setTitle("이벤트 E(15:47 ~ 15:59)");
+
+                startAt
+                        = LocalDateTime.of(
+                        LocalDate.of(year, month, date),
+                        LocalTime.of(11, 47, 0)
+                ).with(TemporalAdjusters.nextOrSame(DayOfWeek.THURSDAY));
+
+                endAt = LocalDateTime.of(startAt.toLocalDate(), startAt.toLocalTime())
+                        .plusMinutes(12);
+
+                e9.setStartAndEndDate(startAt, endAt, false);
+                events.add(e9);
+
 
                 // MON ~ WEDS
                 WeekEvent a1 = new WeekEvent("AF004"+date);
@@ -220,7 +288,6 @@ public class KotlinActivity extends AppCompatActivity {
                         .plusDays(4);
                 a5.setStartAndEndDate(startAt, endAt, true);
                 events.add(a5);
-                */
 
                 return events;
             }
@@ -272,12 +339,20 @@ public class KotlinActivity extends AppCompatActivity {
                 WeekView view = (WeekView) findViewById(R.id.weekView);
 
                 LocalDateTime ldt = LocalDateTime.now()
-                        .withDayOfMonth(12)
+                        .plusDays(3)
                         .withHour(15)
                         .withMinute(20);
 
-                view.prepareSchedule(ldt);
+                view.prepareEditSchedule(ldt);
             }
+            break;
+
+            case R.id.action_dismiss: {
+                WeekView view = (WeekView) findViewById(R.id.weekView);
+
+                view.dismissEditSchedule();
+            }
+
             break;
 
             case R.id.action_add: {
@@ -309,6 +384,8 @@ public class KotlinActivity extends AppCompatActivity {
                     selected = null;
                 }
             }
+
+            break;
 
             case R.id.action_move_random: {
                 WeekView view = (WeekView) findViewById(R.id.weekView);

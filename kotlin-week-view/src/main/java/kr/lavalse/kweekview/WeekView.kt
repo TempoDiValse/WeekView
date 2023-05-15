@@ -11,7 +11,6 @@ import android.util.AttributeSet
 import android.view.*
 import android.view.animation.DecelerateInterpolator
 import android.widget.OverScroller
-import androidx.core.animation.doOnEnd
 import androidx.core.view.GestureDetectorCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.postDelayed
@@ -30,8 +29,6 @@ import kr.lavalse.kweekview.extension.ELocalDateTime.withDayOfWeek
 import kr.lavalse.kweekview.model.DummyWeekEvent
 import kr.lavalse.kweekview.model.WeekEvent
 import kr.lavalse.kweekview.model.WeekRect
-import java.lang.Float.max
-import java.lang.Float.min
 import java.time.*
 import java.util.*
 import kotlin.math.abs
@@ -240,7 +237,6 @@ class WeekView @JvmOverloads constructor(
         }
 
         override fun onSingleTapConfirmed(e: MotionEvent): Boolean {
-            println("[SingleTapConfirmed]")
             if(!canEditLongClick){
                 if(isEditMode){
                     val (start, end) = getTimeFromPoint(e.x, e.y).run {
@@ -248,8 +244,7 @@ class WeekView @JvmOverloads constructor(
                     }
 
                     if(editEvent!!.run { startAt == start && endAt == end }){
-                        clearEditMode()
-                        invalidate()
+                        dismissEditSchedule()
 
                         return true
                     }
@@ -278,7 +273,7 @@ class WeekView @JvmOverloads constructor(
         }
 
         override fun onScroll(e1: MotionEvent, e2: MotionEvent, dx: Float, dy: Float): Boolean {
-            if(isZooming || isEditMode) return true
+            if(isZooming) return true
 
             val didScrollHorizontal = abs(dx) > abs(dy)
 
@@ -857,9 +852,14 @@ class WeekView @JvmOverloads constructor(
                 setBackgroundColor(backgroundColor)
 
                 val l = 0f
-                val t = startAt!!.toMinuteOfHours() * 1f
+                var t = startAt!!.toMinuteOfHours() * 1f
                 val r = 1f
-                val b = endAt!!.toMinuteOfHours() * 1f
+                var b = endAt!!.toMinuteOfHours() * 1f
+
+                // 15분 단위로 일정 노출하기 위한 계산
+                // 1분 단위로 노출하고자 할 때에는 아래 수식 삭제
+                t -= (t % 15)
+                b += 15 - (b % 15)
 
                 val rect = WeekRect(l, t, r, b, this)
 
@@ -1204,9 +1204,6 @@ class WeekView @JvmOverloads constructor(
             // Dim 을 담당한다.
             drawRect(0f, 0f, width.toFloat(), height.toFloat(), editEventDimPaint)
 
-            drawRect(highlightRect, highlightPaint)
-            drawRect(highlightRect, highlightStrokePaint)
-
             val offsetY = origin.y + headerHeight
 
             for(rect in dRects){
@@ -1227,13 +1224,28 @@ class WeekView @JvmOverloads constructor(
                     val b = offsetY + ((hourHeight * 24 * rect.bottom) / 1440)
 
                     rect.setAbsoluteRect(l, t, r, b)
+                    highlightRect.left = l.toInt()
+                    highlightRect.right = r.toInt()
+
+                    drawRect(highlightRect, highlightPaint)
+                    drawRect(highlightRect, highlightStrokePaint)
 
                     if(l < r
                         && l < width && t < height
                         && r > timelineWidth && b > headerHeight){
                         painter.color = rect.backgroundColor
 
-                        drawRoundRect(rect.absoluteRect, eventCornerRadius, eventCornerRadius, painter)
+                        drawRect(rect.absoluteRect, painter)
+
+                        if(rect.isBrightColor){
+                            strokePainter.color = rect.strokeColor
+                            drawRect(rect.absoluteRect, strokePainter)
+
+                            eventTextPaint.color = eventTextColor
+                        }else{
+                            eventTextPaint.color = Color.WHITE
+                        }
+
                         drawEventText(this, rect.originalEvent, l, t, r, b)
                     }
                 }
@@ -1440,18 +1452,17 @@ class WeekView @JvmOverloads constructor(
         animator = null
         isEditMode = false
         editEvent = null
-
-        listener?.onEmptyEventDismissed()
     }
 
-    private fun removeOnlyDummyEvent(){
-        rects.removeIf { it.originalEvent is DummyWeekEvent }
-    }
+    private fun removeOnlyDummyEvent(){ rects.removeIf { it.originalEvent is DummyWeekEvent } }
 
     private fun clearAllRect(){
-        if(rects.isEmpty()) return
+        // 편집 이벤트에 관련된 블록은 삭제에서 제외하도록 한다.
+        // 스크롤 및 페이지 이동 시 화면이 갱신됨에 따라 사라지는 문제 때문.
+        val r = rects.filterNot { it.originalEvent is DummyWeekEvent }
+        if(r.isEmpty()) return
 
-        rects.clear()
+        rects.removeIf { it.originalEvent !is DummyWeekEvent }
     }
 
     var onWeekChangeListener: OnWeekViewListener?
@@ -1548,9 +1559,6 @@ class WeekView @JvmOverloads constructor(
             statePageMove = PageMove.WHERE
         }
 
-        if(isEditMode)
-            clearEditMode()
-
         val fdow = firstVisibleDate.toLocalDate()
         val diff = date.toEpochDay() - fdow.toEpochDay()
 
@@ -1560,27 +1568,18 @@ class WeekView @JvmOverloads constructor(
     }
 
     /**
-     * 지정된 시간을 하이라이팅하여 보여주도록 한다.
+     * 편집모드 하이라이트 사각형의 범위를 지정해준다
      */
-    private fun showScheduleInsertion(date: LocalDate){
-        dismissScheduleInsertion()
+    private fun setEditBounds(){
+        resetEditBounds()
 
-        val firstVisibleIndex = -ceil(origin.x / widthPerDay).toInt()
-        val startX = timelineWidth + origin.x + (widthPerDay * firstVisibleIndex)
+        val t = highlightStrokeWidth
+        val b = height - t
 
-        val firstVisibleDate = today
-                .plusDays(firstVisibleIndex * 1L)
-                .toLocalDate()
-
-        val days = date.toEpochDay() - firstVisibleDate.toEpochDay()
-
-        val (l, t) = startX + (days * widthPerDay) to highlightStrokeWidth
-        val (r, b) = l + widthPerDay to height - t
-
-        highlightRect.set(l.toInt(), t, r.toInt(), b)
+        highlightRect.set(0, t, 0, b)
     }
 
-    private fun dismissScheduleInsertion(){
+    private fun resetEditBounds(){
         highlightRect.set(0, 0, 0, 0)
     }
 
@@ -1590,7 +1589,7 @@ class WeekView @JvmOverloads constructor(
      *
      * @param date 표시하고자 하는 날짜와 시작시간
      */
-    fun prepareSchedule(date: LocalDateTime){
+    fun prepareEditSchedule(date: LocalDateTime){
         // 오늘 기준 이전일 이면 편집을 하지 못하도록 한다.
         if(today.isBeforeDay(date))
             throw IllegalArgumentException("기준일 ($today) 보다 이전 일 입니다.")
@@ -1599,7 +1598,7 @@ class WeekView @JvmOverloads constructor(
             current = date.withDayOfWeek(today.dayOfWeek)
 
             moveTo(current.toLocalDate())
-            prepareSchedule(date)
+            prepareEditSchedule(date)
 
             return
         }
@@ -1620,6 +1619,17 @@ class WeekView @JvmOverloads constructor(
             animator = animatorHighlight()
             animator?.start()
         }
+    }
+
+    /**
+     * 스케쥴 등록을 위해 준비한 UI 를 제거 한다.
+     */
+    fun dismissEditSchedule(){
+        clearEditMode()
+
+        invalidate()
+
+        listener?.onEmptyEventDismissed()
     }
 
     /**
@@ -1682,7 +1692,7 @@ class WeekView @JvmOverloads constructor(
             setStartAndEndDate(start, end)
         }
 
-        showScheduleInsertion(start.toLocalDate())
+        setEditBounds()
         positioningTempEventRectOffset(listOf(editEvent!!))
 
         listener?.onEmptyEventWillBeAdded(editEvent!!.startTimeInMillis, editEvent!!.endTimeInMillis)
