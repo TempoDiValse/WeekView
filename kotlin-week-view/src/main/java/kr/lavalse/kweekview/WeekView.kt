@@ -74,13 +74,13 @@ class WeekView @JvmOverloads constructor(
         private const val DEFAULT_PAST_EVENT_COLOR = Color.LTGRAY
 
         private const val DEFAULT_EVENT_CORNER_RADIUS = 0f
+        private const val DEFAULT_EVENT_BLOCK_ROUND_CEIL = 10f
         private const val DEFAULT_EVENT_TITLE_PADDING = 10f
         private const val DEFAULT_EVENT_TEXT_COLOR = 0xFF333333
         private const val DEFAULT_EVENT_TEXT_MAX_LINES = 2f
-        private const val DEFAULT_TEMPORARY_EVENT_COLOR = 0xFFFA614F
 
         private const val DEFAULT_HIGHLIGHT_COLOR = 0xFF415AEF
-        private const val DEFAULT_HIGHLIGHT_BACKGROUND_ALPHA = 150
+        private const val DEFAULT_HIGHLIGHT_BACKGROUND_ALPHA = 120
         private const val DEFAULT_HIGHLIGHT_STROKE_WIDTH = 2f
 
         fun getDefaultDayOfWeekPaint() = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -448,7 +448,7 @@ class WeekView @JvmOverloads constructor(
             eventTextColor = getColor(R.styleable.WeekView_eventTextColor, DEFAULT_EVENT_TEXT_COLOR.toInt())
             eventTextSize = getDimensionPixelSize(R.styleable.WeekView_eventTextSize, textSize)
 
-            editEventColor = getColor(R.styleable.WeekView_editEventColor, DEFAULT_TEMPORARY_EVENT_COLOR.toInt())
+            editEventColor = getColor(R.styleable.WeekView_editEventColor, DEFAULT_HIGHLIGHT_COLOR.toInt())
             editEventText = getString(R.styleable.WeekView_editEventText) ?: ""
 
             pastEventColor = getColor(R.styleable.WeekView_pastEventColor, DEFAULT_PAST_EVENT_COLOR)
@@ -856,10 +856,12 @@ class WeekView @JvmOverloads constructor(
                 val r = 1f
                 var b = endAt!!.toMinuteOfHours() * 1f
 
-                // 15분 단위로 일정 노출하기 위한 계산
+                // N분 단위로 일정 노출하기 위한 계산
                 // 1분 단위로 노출하고자 할 때에는 아래 수식 삭제
-                t -= (t % 15)
-                b += 15 - (b % 15)
+                t -= (t % DEFAULT_EVENT_BLOCK_ROUND_CEIL)
+                var ceilBottom = DEFAULT_EVENT_BLOCK_ROUND_CEIL - (b % DEFAULT_EVENT_BLOCK_ROUND_CEIL)
+                if(ceilBottom == DEFAULT_EVENT_BLOCK_ROUND_CEIL) ceilBottom = 0f
+                b += ceilBottom
 
                 val rect = WeekRect(l, t, r, b, this)
 
@@ -926,12 +928,12 @@ class WeekView @JvmOverloads constructor(
 
             val date = today.withTime(0)
 
-            clipRect(0f, headerHeight - (timelineTextHeight / 2f), timelineWidth * 1f, height * 1f)
+            clipRect(0f, headerHeight * 1f, timelineWidth * 1f, height * 1f)
 
             for(i in 0 until 24){
                 val str = date.withHour(i).toText("HH:mm")
 
-                val top = origin.y + headerHeight + (hourHeight * i) + (timelineTextHeight / 2)
+                val top = origin.y + headerHeight + (hourHeight / 2) + (hourHeight * i) + (timelineTextHeight / 2)
 
                 if(top < height)
                     drawText(str, (timelineTextWidth + timelineHorizontalPadding).toFloat(), top, timelineTextPaint)
@@ -1132,7 +1134,10 @@ class WeekView @JvmOverloads constructor(
         canvas?.run {
             save()
 
-            drawText(allDayEventText, timelineHorizontalPadding + allDayTextWidth * 1f, (headerHeight / 2) + (timelineTextHeight * 1f), timelineTextPaint)
+            drawText(allDayEventText,
+                timelineWidth + timelineHorizontalPadding - allDayTextWidth * 1f,
+                dayOfWeekHeight + (allDayAreaHeight / 2) + (timelineTextHeight / 2f),
+                timelineTextPaint)
 
             val left = offsetX.coerceAtLeast(timelineWidth.toFloat())
 
@@ -1181,12 +1186,13 @@ class WeekView @JvmOverloads constructor(
 
             if(rect.isBrightColor){
                 strokePainter.color = rect.strokeColor
-                drawRect(absRect, strokePainter)
-
                 eventTextPaint.color = eventTextColor
             }else{
                 eventTextPaint.color = Color.WHITE
+                strokePainter.color = Color.WHITE
             }
+
+            drawRect(absRect, strokePainter)
 
             drawEventText(canvas, rect.originalEvent, absRect.left, absRect.top, absRect.right, absRect.bottom)
         }
