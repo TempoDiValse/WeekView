@@ -206,6 +206,10 @@ class WeekView @JvmOverloads constructor(
     private var highlightStrokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
     }
+    private val highlightEmphasisDayOfWeekTextPaint = getDefaultDayOfWeekPaint()
+    private val highlightEmphasisTimelineTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        textAlign = Paint.Align.RIGHT
+    }
     private var highlightStrokeWidth = 0
 
     private var scaledTouchSlop = 0
@@ -553,6 +557,15 @@ class WeekView @JvmOverloads constructor(
             p.color = highlightColor
             p.strokeWidth = highlightStrokeWidth.toFloat()
         }
+        highlightEmphasisDayOfWeekTextPaint.let { p ->
+            p.textSize = dayOfWeekTextSize.toFloat()
+            p.color = highlightColor
+        }
+        highlightEmphasisTimelineTextPaint.let { p ->
+            p.textSize = timelineTextSize.toFloat()
+            p.typeface = Typeface.DEFAULT_BOLD
+            p.color = highlightColor
+        }
 
         timelineTextPaint.textSize = timelineTextSize.toFloat()
 
@@ -670,11 +683,7 @@ class WeekView @JvmOverloads constructor(
         for(index in firstVisibleIndex + 1 .. firstVisibleIndex + visibleDays + 1){
             val date = standard.plusDays((index - 1).toLong())
 
-            val dt = when {
-                today.isBeforeDay(date) -> DayType.PAST
-                date.isSameDay(today) -> DayType.TODAY
-                else -> DayType.COMMON
-            }
+            val dt = getCurrentDayType(date)
 
             drawDayOfWeek(canvas, date, offsetX, dt)
             drawCommonEvent(canvas, date, offsetX, dt)
@@ -931,21 +940,23 @@ class WeekView @JvmOverloads constructor(
     private fun drawTimeline(canvas: Canvas?){
         canvas?.run {
             save()
-
-            val date = today.withTime(0)
-
             clipRect(0f, headerHeight * 1f, timelineWidth * 1f, height * 1f)
 
-            for(i in 0 until 24){
-                val str = date.withHour(i).toText("HH:mm")
-
-                val top = origin.y + headerHeight + (hourHeight / 2) + (hourHeight * i) + (timelineTextHeight / 2)
-
-                if(top < height)
-                    drawText(str, (timelineTextWidth + timelineHorizontalPadding).toFloat(), top, timelineTextPaint)
-            }
+            val date = today.withTime(0)
+            (0 until 24).forEach { drawTimelineText(this, date.withHour(it)) }
 
             restore()
+        }
+    }
+
+    private fun drawTimelineText(canvas: Canvas?, time: LocalDateTime, doEdit: Boolean = false){
+        val str = time.toText("HH:mm")
+        val top = origin.y + headerHeight + (hourHeight / 2) + (hourHeight * time.hour) + (timelineTextHeight / 2)
+
+        if(top < height){
+            val p = if(doEdit) highlightEmphasisTimelineTextPaint else timelineTextPaint
+
+            canvas?.drawText(str, (timelineTextWidth + timelineHorizontalPadding).toFloat(), top, p)
         }
     }
 
@@ -1015,7 +1026,7 @@ class WeekView @JvmOverloads constructor(
         }
     }
 
-    private fun drawDayOfWeek(canvas: Canvas?, date: LocalDateTime, offsetX: Float, dayType: Int){
+    private fun drawDayOfWeek(canvas: Canvas?, date: LocalDateTime, offsetX: Float, dayType: Int, doEdit: Boolean = false){
         canvas?.run {
             save()
             clipRect(timelineWidth, 0, width, dayOfWeekHeight)
@@ -1025,21 +1036,24 @@ class WeekView @JvmOverloads constructor(
             val isFirstDayOfMonth = YearMonth.from(date).atDay(1).isSameDay(date.toLocalDate())
             val str = date.toText(if(!isFirstDayOfMonth) DEFAULT_FORMAT_DAY_OF_WEEK else "E M.d")
 
-            when(date.dayOfWeek){
-                DayOfWeek.SUNDAY -> drawText(str, x, y, dayOfWeekSundayTextPaint)
-                DayOfWeek.SATURDAY -> drawText(str, x, y, dayOfWeekSaturdayTextPaint)
-                else -> {
-                    when(dayType){
-                        DayType.TODAY -> {
-                            val top = (dayOfWeekVerticalPadding / 4f)
-
-                            drawRoundRect(offsetX, top, offsetX + widthPerDay,  ((dayOfWeekHeight * 1f) - (top / 2f)), 10f, 10f, dayOfWeekTodayBackgroundPaint)
-                            drawText(str, x, y, dayOfWeekTodayTextPaint)
-                        }
-                        else -> drawText(str, x, y, dayOfWeekTextPaint)
+            val p = when {
+                dayType == DayType.TODAY -> dayOfWeekTodayTextPaint
+                doEdit -> highlightEmphasisDayOfWeekTextPaint
+                else ->
+                    when(date.dayOfWeek){
+                        DayOfWeek.SUNDAY -> dayOfWeekSundayTextPaint
+                        DayOfWeek.SATURDAY -> dayOfWeekSaturdayTextPaint
+                        else -> dayOfWeekTextPaint
                     }
-                }
             }
+
+            if(dayType == DayType.TODAY){
+                val top = (dayOfWeekVerticalPadding / 4f)
+
+                drawRoundRect(offsetX, top, offsetX + widthPerDay,  ((dayOfWeekHeight * 1f) - (top / 2f)), 10f, 10f, dayOfWeekTodayBackgroundPaint)
+            }
+
+            drawText(str, x, y, p)
 
             restore()
         }
@@ -1048,6 +1062,7 @@ class WeekView @JvmOverloads constructor(
     private fun drawCommonEvent(canvas: Canvas?, date: LocalDateTime, offsetX: Float, type: Int){
         canvas?.run {
             save()
+            clipRect(timelineWidth * 1f, headerHeight * 1f, width * 1f, height * 1f)
 
             val left = offsetX.coerceAtLeast(timelineWidth.toFloat())
             val top = headerHeight
@@ -1075,8 +1090,6 @@ class WeekView @JvmOverloads constructor(
 
         canvas?.run {
             save()
-
-            clipRect(timelineWidth, headerHeight, width, height)
 
             for (rect in cRects){
                 val offsetY = origin.y + headerHeight
@@ -1230,6 +1243,8 @@ class WeekView @JvmOverloads constructor(
                         continue
                     }
 
+                    val dt = getCurrentDayType(date)
+
                     val l = offsetX + (rect.left * widthPerDay)
                     val t = offsetY + ((hourHeight * 24 * rect.top) / 1440)
                     val r = l + (rect.right * widthPerDay)
@@ -1239,8 +1254,14 @@ class WeekView @JvmOverloads constructor(
                     highlightRect.left = l.toInt()
                     highlightRect.right = r.toInt()
 
+                    // 하이라이트 & 딤을 해주면 일자와 시간이 전부 알파처리되기 떄문에
                     drawRect(highlightRect, highlightPaint)
                     drawRect(highlightRect, highlightStrokePaint)
+
+                    // 그 위로 새로 덧그려준다
+                    val startAt = rect.originalEvent.startAt!!
+                    drawTimelineText(this, startAt, true)
+                    drawDayOfWeek(this, date, offsetX, dt, true)
 
                     if(l < r
                         && l < width && t < height
@@ -1267,6 +1288,12 @@ class WeekView @JvmOverloads constructor(
 
             restore()
         }
+    }
+
+    private fun getCurrentDayType(date: LocalDateTime) = when {
+        today.isBeforeDay(date) -> DayType.PAST
+        date.isSameDay(today) -> DayType.TODAY
+        else -> DayType.COMMON
     }
 
     private fun isEventCollide(e1: WeekEvent, e2: WeekEvent)
@@ -1455,9 +1482,6 @@ class WeekView @JvmOverloads constructor(
 
         ViewCompat.postInvalidateOnAnimation(this)
     }
-
-    private fun isSameWeekColumn(date: LocalDateTime) =
-        current.isSameWeek(date) && abs(current.toLocalDate().toEpochDay() - date.toLocalDate().toEpochDay()) < 7
 
     private fun clearEditMode(){
         if(!isEditMode) return
