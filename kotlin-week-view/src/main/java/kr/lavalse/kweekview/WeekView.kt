@@ -14,6 +14,7 @@ import android.widget.OverScroller
 import androidx.core.view.GestureDetectorCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.postDelayed
+import kr.lavalse.kweekview.exception.*
 import kr.lavalse.kweekview.extension.EContext.toDP
 import kr.lavalse.kweekview.extension.EContext.toSP
 import kr.lavalse.kweekview.extension.ELocalDateTime.isBeforeDay
@@ -386,7 +387,11 @@ class WeekView @JvmOverloads constructor(
         }
 
         override fun onLongPress(e: MotionEvent) {
-            if(e.y < headerHeight) return
+            if(e.y < headerHeight) {
+                sendError(CantTouchAllDayException())
+
+                return
+            }
 
             if(!isLongPressed)
                 isLongPressed = true
@@ -396,7 +401,11 @@ class WeekView @JvmOverloads constructor(
         }
 
         private fun changeWithEditMode(e: MotionEvent){
-            if(e.y < headerHeight) return
+            if(e.y < headerHeight) {
+                sendError(CantTouchAllDayException())
+
+                return
+            }
 
             val (start, end) = getTimeFromPoint(e.x, e.y).run {
                 adjustScheduleStartOrEnd(this, true) to adjustScheduleStartOrEnd(this, false)
@@ -682,7 +691,6 @@ class WeekView @JvmOverloads constructor(
 
         for(index in firstVisibleIndex + 1 .. firstVisibleIndex + visibleDays + 1){
             val date = standard.plusDays((index - 1).toLong())
-
             val dt = getCurrentDayType(date)
 
             drawDayOfWeek(canvas, date, offsetX, dt)
@@ -889,7 +897,9 @@ class WeekView @JvmOverloads constructor(
         events.forEach {
             with(it){
                 val t = startAt!!.toMinuteOfHours() * 1f
-                val b = endAt!!.toMinuteOfHours() * 1f
+
+                val et = if(endAt!!.hour != 0) endAt!! else endAt!!.minusNanos(1)
+                val b = et.toMinuteOfHours() * 1f
 
                 rects.add(WeekRect(0f, t, 1f, b, this))
             }
@@ -1243,8 +1253,6 @@ class WeekView @JvmOverloads constructor(
                         continue
                     }
 
-                    val dt = getCurrentDayType(date)
-
                     val l = offsetX + (rect.left * widthPerDay)
                     val t = offsetY + ((hourHeight * 24 * rect.top) / 1440)
                     val r = l + (rect.right * widthPerDay)
@@ -1261,6 +1269,8 @@ class WeekView @JvmOverloads constructor(
                     // 그 위로 새로 덧그려준다
                     val startAt = rect.originalEvent.startAt!!
                     drawTimelineText(this, startAt, true)
+
+                    val dt = getCurrentDayType(date)
                     drawDayOfWeek(this, date, offsetX, dt, true)
 
                     if(l < r
@@ -1607,6 +1617,11 @@ class WeekView @JvmOverloads constructor(
     }
 
     /**
+     * 이전 페이지로 넘어갈 수 있는 지 확인한다.
+     */
+    fun canMovePrevious() = current.isBeforeDay(today)
+
+    /**
      * 편집모드 하이라이트 사각형의 범위를 지정해준다
      */
     private fun setEditBounds(){
@@ -1630,8 +1645,10 @@ class WeekView @JvmOverloads constructor(
      */
     fun prepareEditSchedule(date: LocalDateTime){
         // 오늘 기준 이전일 이면 편집을 하지 못하도록 한다.
-        if(today.isBeforeDay(date))
-            throw IllegalArgumentException("기준일 ($today) 보다 이전 일 입니다.")
+        if(today.isBeforeDay(date)) {
+            sendError(IsPastFromTodayException(today, date))
+            return
+        }
 
         val c = date.withDayOfWeek(today.dayOfWeek)
         moveTo(c.toLocalDate())
@@ -1672,6 +1689,12 @@ class WeekView @JvmOverloads constructor(
      * @param id 이벤트의 ID 값
      */
     fun removeScheduleById(id: String){
+        if(!hasScheduleById(id)) {
+            sendError(NotExistException())
+
+            return
+        }
+
         rects.removeIf { it.originalEvent.id == id }
 
         invalidate()
@@ -1683,14 +1706,17 @@ class WeekView @JvmOverloads constructor(
      * @param event UI 로 사용할 이벤트를 넣는다.
      */
     fun addSchedule(event: WeekEvent){
-        if(event.startTimeInMillis > event.endTimeInMillis)
-            throw IllegalArgumentException("시작시간이 끝 시간보다 큼")
+        if(event.startTimeInMillis > event.endTimeInMillis) {
+            sendError(TimeIsReversedException())
+            return
+        }
 
-        if(hasSchedule(event))
-            throw IllegalArgumentException("이미 등록되어 있는 스케쥴입니다. [${event.id}]")
+        if(hasSchedule(event)) {
+            sendError(AlreadyExistException(event))
+            return
+        }
 
         val list = sortAndSplitSchedules(listOf(event))
-
         dispatchCommonEvents(list.toMutableList())
 
         invalidate()
@@ -1764,6 +1790,8 @@ class WeekView @JvmOverloads constructor(
         return animSet
     }
 
+    private fun sendError(e: Throwable?){ listener?.onErrorEventListener(e) }
+
     interface OnWeekViewListener {
         /**
          * View 에 데이터를 전달하는 부분으로, 기본적으로 전/이번/다음 주의 데이터를 불러오게 되어있다.
@@ -1806,5 +1834,12 @@ class WeekView @JvmOverloads constructor(
          * @param week 해당 주의 연 기준 주일 수
          */
         fun onCurrentWeekChanged(year: Int, month: Int, date: Int, week: Int)
+
+        /**
+         * 이벤트 처리 중 에러가 있는 경우에 발생함
+         *
+         * @see[WeekViewException]
+         */
+        fun onErrorEventListener(e: Throwable?)
     }
 }

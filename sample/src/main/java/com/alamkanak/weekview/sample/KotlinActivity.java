@@ -35,6 +35,11 @@ public class KotlinActivity extends AppCompatActivity {
         WeekView view = ((WeekView) findViewById(R.id.weekView));
         view.setOnWeekChangeListener(new WeekView.OnWeekViewListener() {
             @Override
+            public void onErrorEventListener(@Nullable Throwable e) {
+                e.printStackTrace();
+            }
+
+            @Override
             public void onEmptyEventDismissed() {
 
             }
@@ -225,6 +230,22 @@ public class KotlinActivity extends AppCompatActivity {
                 e9.setStartAndEndDate(startAt, endAt, false);
                 events.add(e9);
 
+                WeekEvent e10 = new WeekEvent("AF015"+date);
+                e10.setBackgroundColor("#00C979");
+                e10.setTitle("추가근무");
+
+                startAt
+                        = LocalDateTime.of(
+                        LocalDate.of(year, month, date),
+                        LocalTime.of(23, 0, 0)
+                ).with(TemporalAdjusters.nextOrSame(DayOfWeek.SATURDAY));
+
+                endAt = LocalDateTime.of(startAt.toLocalDate(), startAt.toLocalTime())
+                        .plusMinutes(80);
+
+                e10.setStartAndEndDate(startAt, endAt, false);
+                events.add(e10);
+
 
                 // MON ~ WEDS
                 WeekEvent a1 = new WeekEvent("AF004"+date);
@@ -310,6 +331,7 @@ public class KotlinActivity extends AppCompatActivity {
             case R.id.action_prev: {
                 WeekView view = (WeekView) findViewById(R.id.weekView);
 
+                System.out.println("hasPrevious: "+view.canMovePrevious());
                 view.moveToPrev();
             }
             break;
