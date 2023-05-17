@@ -44,6 +44,7 @@ class WeekView @JvmOverloads constructor(
 
         private const val DEFAULT_VISIBLE_DAYS = 7
         private const val DEFAULT_PRELOAD_WEEK_DATA_RANGE = 3
+        private const val DEFAULT_FLING_MAX_LIMIT = 10000f
 
         private const val DEFAULT_TEXT_SIZE = 12f
 
@@ -358,7 +359,7 @@ class WeekView @JvmOverloads constructor(
 
             when(currentFlingDirection){
                 Scroll.LEFT, Scroll.RIGHT -> {
-                    val velocity = vx * Scroll.X_SPEED
+                    val velocity = vx.coerceIn(-DEFAULT_FLING_MAX_LIMIT, DEFAULT_FLING_MAX_LIMIT) * Scroll.X_SPEED
 
                     scroller.fling(
                         origin.x.toInt(), origin.y.toInt(),
@@ -896,6 +897,11 @@ class WeekView @JvmOverloads constructor(
                 comparator = if(b1 > b2) 1 else (if(b1 < b2) -1 else 0)
             }
 
+            if(comparator == 0){
+                val (c1, c2) = e1.title to e2.title
+                comparator = if(c1 > c2) 1 else (if(c1 < c2) -1 else 0)
+            }
+
             comparator
         }
     }
@@ -1017,7 +1023,7 @@ class WeekView @JvmOverloads constructor(
             val (x, y) = offsetX + (widthPerDay / 2) to dayOfWeekHeight - (dayOfWeekVerticalPadding / 2f)
 
             val isFirstDayOfMonth = YearMonth.from(date).atDay(1).isSameDay(date.toLocalDate())
-            val str = date.toText(if(!isFirstDayOfMonth) DEFAULT_FORMAT_DAY_OF_WEEK else "E M/d")
+            val str = date.toText(if(!isFirstDayOfMonth) DEFAULT_FORMAT_DAY_OF_WEEK else "E M.d")
 
             when(date.dayOfWeek){
                 DayOfWeek.SUNDAY -> drawText(str, x, y, dayOfWeekSundayTextPaint)
@@ -1450,6 +1456,9 @@ class WeekView @JvmOverloads constructor(
         ViewCompat.postInvalidateOnAnimation(this)
     }
 
+    private fun isSameWeekColumn(date: LocalDateTime) =
+        current.isSameWeek(date) && abs(current.toLocalDate().toEpochDay() - date.toLocalDate().toEpochDay()) < 7
+
     private fun clearEditMode(){
         if(!isEditMode) return
 
@@ -1600,16 +1609,10 @@ class WeekView @JvmOverloads constructor(
         if(today.isBeforeDay(date))
             throw IllegalArgumentException("기준일 ($today) 보다 이전 일 입니다.")
 
-        if(!current.isSameWeek(date)){
-            current = date.withDayOfWeek(today.dayOfWeek)
+        val c = date.withDayOfWeek(today.dayOfWeek)
+        moveTo(c.toLocalDate())
 
-            moveTo(current.toLocalDate())
-            prepareEditSchedule(date)
-
-            return
-        }
-
-        postDelayed(300) {
+        postDelayed(250) {
             val (start, end) = date.toTimeMillis().run {
                 adjustScheduleStartOrEnd(this, true) to adjustScheduleStartOrEnd(this, false)
             }
