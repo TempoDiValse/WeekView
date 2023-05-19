@@ -117,7 +117,7 @@ public class KotlinActivity extends AppCompatActivity {
 
                 // 14:00 ~ 16:00
                 WeekEvent e3 = new WeekEvent("AF003"+date);
-                e3.setBackgroundColor("#015AEF");
+                e3.setBackgroundColor("#46a3f0");
                 e3.setTitle("스터디");
 
                 startAt
@@ -134,7 +134,7 @@ public class KotlinActivity extends AppCompatActivity {
                 events.add(e3);
 
                 WeekEvent e4 = new WeekEvent("AF009"+date);
-                e4.setBackgroundColor("#FFD034");
+                e4.setBackgroundColor("#ff8787");
                 e4.setTitle("IT 컨퍼런스");
 
                 startAt
@@ -249,7 +249,7 @@ public class KotlinActivity extends AppCompatActivity {
 
                 // MON ~ WEDS
                 WeekEvent a1 = new WeekEvent("AF004"+date);
-                a1.setBackgroundColor("#38F132");
+                a1.setBackgroundColor("#2a5ec3");
                 a1.setTitle("제주출장");
                 startAt
                     = LocalDateTime.of(
@@ -265,7 +265,7 @@ public class KotlinActivity extends AppCompatActivity {
 
                 // TUES ~ WEDS
                 WeekEvent a2 = new WeekEvent("AF005"+date);
-                a2.setBackgroundColor("#6A5D19");
+                a2.setBackgroundColor("#3bc9db");
                 a2.setTitle("배포 A");
 
                 startAt = LocalDateTime.of(LocalDate.of(year, month, date), LocalTime.of(0, 0, 0))
@@ -279,7 +279,7 @@ public class KotlinActivity extends AppCompatActivity {
                 // FRI
                 WeekEvent a3 = new WeekEvent("AF006"+date);
                 a3.setTitle("연차");
-                a3.setBackgroundColor("#FAAA32");
+                a3.setBackgroundColor("#1995ff");
                 startAt = LocalDateTime.of(LocalDate.of(year, month, date), LocalTime.of(0, 0, 0))
                         .with(TemporalAdjusters.nextOrSame(DayOfWeek.FRIDAY));
                 endAt = LocalDateTime.of(startAt.toLocalDate(), startAt.toLocalTime());
@@ -308,9 +308,11 @@ public class KotlinActivity extends AppCompatActivity {
                 endAt = LocalDateTime.of(startAt.toLocalDate(), startAt.toLocalTime())
                         .plusDays(4);
                 a5.setStartAndEndDate(startAt, endAt, true);
-                events.add(a5);
+                //events.add(a5);
 
                 return events;
+
+                //return new ArrayList<>();
             }
         });
 

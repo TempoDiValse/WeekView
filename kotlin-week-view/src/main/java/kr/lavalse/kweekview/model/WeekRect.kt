@@ -46,8 +46,8 @@ class WeekRect : RectF {
     val strokeColor get() = event.strokeColor
     val isBrightColor get() = event.isBrightColor
 
-    fun setAbsoluteRect(l: Float, t: Float, r: Float, b: Float){
-        absRect.set(l, t, r, b)
+    fun setAbsoluteRect(l: Float, t: Float, r: Float, b: Float, padding: Float){
+        absRect.set(l + padding, t + padding, r - padding, b - padding)
     }
 
     fun containsTouchPoint(x: Float, y: Float) = absoluteRect.contains(x, y)

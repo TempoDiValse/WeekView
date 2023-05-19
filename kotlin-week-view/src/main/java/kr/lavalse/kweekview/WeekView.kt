@@ -41,7 +41,7 @@ class WeekView @JvmOverloads constructor(
     context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
 ) : View(context, attrs, defStyleAttr) {
     companion object {
-        private const val DEFAULT_FORMAT_DAY_OF_WEEK = "E d"
+        private const val DEFAULT_FORMAT_DAY_OF_WEEK = "d"
 
         private const val DEFAULT_VISIBLE_DAYS = 7
         private const val DEFAULT_PRELOAD_WEEK_DATA_RANGE = 3
@@ -49,41 +49,56 @@ class WeekView @JvmOverloads constructor(
 
         private const val DEFAULT_TEXT_SIZE = 12f
 
-        private const val DEFAULT_GRID_SEPARATOR_COLOR = Color.LTGRAY
-        private const val DEFAULT_GRID_SEPARATOR_STROKE_WIDTH = .3f
+        private const val DEFAULT_LINE_COLOR = 0x0f3C3C43
+        private const val DEFAULT_LINE_STROKE_WIDTH = 1f
 
-        private const val DEFAULT_HOUR_HEIGHT = 50f
+        private const val DEFAULT_HOUR_HEIGHT = 56f
         private const val DEFAULT_HOUR_HEIGHT_MIN = 30f
         private const val DEFAULT_HOUR_HEIGHT_MAX = 70f
 
-        private const val DEFAULT_TIMELINE_HORIZONTAL_PADDING = 10f
+        private const val DEFAULT_TIMELINE_LEFT_PADDING = 8f
+        private const val DEFAULT_TIMELINE_RIGHT_PADDING = 4f
+        private const val DEFAULT_TIMELINE_TEXT_SIZE = 12f
+        private const val DEFAULT_TIMELINE_TEXT_COLOR = 0xFF8B8B8F
 
         private const val DEFAULT_TIME_NOW_COLOR = 0x355AEF
         private const val DEFAULT_TIME_NOW_STROKE_WIDTH = .5f
 
-        private const val DEFAULT_DAY_OF_WEEK_VERTICAL_PADDING = 20f
-        private const val DEFAULT_DAY_OF_WEEK_TEXT_COLOR = 0xFF333333
+        private const val DEFAULT_DAY_OF_WEEK_TOP_PADDING = 7f
+        private const val DEFAULT_DAY_OF_WEEK_BOTTOM_PADDING = 2f
+        private const val DEFAULT_DAY_OF_WEEK_TEXT_SPACE = 3f
+
+        private const val DEFAULT_DAY_OF_WEEK_TEXT_NUMBER_SIZE = 16f
+        private const val DEFAULT_DAY_OF_WEEK_TEXT_NUMBER_COLOR = 0xFF111111
+        private const val DEFAULT_DAY_OF_WEEK_TEXT_COLOR = 0xFF8B8B8F
         private const val DEFAULT_DAY_OF_WEEK_TODAY_TEXT_COLOR = 0xFFFFFFFF
-        private const val DEFAULT_DAY_OF_WEEK_TODAY_BACKGROUND_COLOR = 0xFF415AEF
-        private const val DEFAULT_DAY_OF_WEEK_SUNDAY_TEXT_COLOR = 0xFFFF0011
-        private const val DEFAULT_DAY_OF_WEEK_SATURDAY_TEXT_COLOR = 0xFF4682F1
+        private const val DEFAULT_DAY_OF_WEEK_TODAY_BACKGROUND_COLOR = 0xFF4D7CFE
+        private const val DEFAULT_DAY_OF_WEEK_TODAY_BACKGROUND_SIZE = 30f
+        private const val DEFAULT_DAY_OF_WEEK_SUNDAY_TEXT_COLOR = 0xFFFC4C60
+        private const val DEFAULT_DAY_OF_WEEK_SATURDAY_TEXT_COLOR = 0xFF4D7CFE
 
         private const val DEFAULT_ALLDAY_TEXT = "종일"
-        private const val DEFAULT_ALLDAY_AREA_HEIGHT = 50f
 
-        private const val DEFAULT_DAY_BACKGROUND_COLOR = Color.WHITE
-        private const val DEFAULT_TODAY_BACKGROUND_COLOR = 0xFFC7F1FF
+        private const val DEFAULT_DAY_BACKGROUND_COLOR = Color.TRANSPARENT
+        private const val DEFAULT_TODAY_BACKGROUND_COLOR = Color.TRANSPARENT
         private const val DEFAULT_PAST_EVENT_COLOR = Color.LTGRAY
 
-        private const val DEFAULT_EVENT_CORNER_RADIUS = 0f
+        private const val DEFAULT_EVENT_CORNER_RADIUS = 3f
         private const val DEFAULT_EVENT_BLOCK_ROUND_CEIL = 10f
-        private const val DEFAULT_EVENT_TITLE_PADDING = 10f
+        private const val DEFAULT_EVENT_BLOCK_PADDING = 1f
+        private const val DEFAULT_EVENT_BLOCK_EMPTY_BACKGROUND = 0xFFF7F8FC
+        private const val DEFAULT_EVENT_TEXT_HORIZONTAL_PADDING = 6f
+        private const val DEFAULT_EVENT_TEXT_VERTICAL_PADDING = 8f
         private const val DEFAULT_EVENT_TEXT_COLOR = 0xFF333333
         private const val DEFAULT_EVENT_TEXT_MAX_LINES = 2f
 
-        private const val DEFAULT_HIGHLIGHT_COLOR = 0xFF415AEF
-        private const val DEFAULT_HIGHLIGHT_BACKGROUND_ALPHA = 120
-        private const val DEFAULT_HIGHLIGHT_STROKE_WIDTH = 2f
+        private const val DEFAULT_EDIT_EVENT_STROKE_WIDTH = 1f
+        private const val DEFAULT_EDIT_EVENT_STROKE_COLOR = 0xFFFFFFFF
+        private const val DEFAULT_EDIT_EVENT_SHADOW_COLOR = 0x4D000000
+
+        private const val DEFAULT_HIGHLIGHT_COLOR = 0xFF4D7CFE
+        private const val DEFAULT_HIGHLIGHT_BACKGROUND_ALPHA = 25
+        private const val DEFAULT_HIGHLIGHT_STROKE_WIDTH = 1f
 
         fun getDefaultDayOfWeekPaint() = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             textAlign = Paint.Align.CENTER
@@ -132,23 +147,31 @@ class WeekView @JvmOverloads constructor(
     private val origin: PointF = PointF(0f, 0f)
     private var prevX: Float = 0f
 
+    private var eventTextHorizontalPadding = 0f
+    private var eventTextVerticalPadding = 0f
     private var eventCornerRadius = 0f
-    private var eventTitlePadding = 0f
+    private var eventBlockPadding = 0f
     private var painter = Paint(Paint.ANTI_ALIAS_FLAG)
-    private var strokePainter = Paint().apply {
-        style = Paint.Style.STROKE
-        strokeWidth = 1f
+    private var eventEmptyPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = DEFAULT_EVENT_BLOCK_EMPTY_BACKGROUND.toInt()
     }
 
     private var pastEventColor = Color.WHITE
 
     private var editEventText = ""
     private var editEventColor = Color.WHITE
-    private var editEventDimPaint : Paint = Paint()
+    private var editEventStrokeColor = Color.WHITE
+    private var editEventStrokeWidth = 0f
+    private var editEventShadowColor = Color.TRANSPARENT
+    private val editEventDimPaint : Paint = Paint()
+    private val editEventStrokePaint : Paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+    }
 
-    private var gridSeparatorColor = Color.WHITE
-    private var gridSeparatorStrokeWidth = .0f
-    private val gridSeparatorPaint : Paint = Paint()
+    private var lineColor = Color.WHITE
+    private var lineAllDayColor = Color.WHITE
+    private var lineStrokeWidth = 0f
+    private val linePaint : Paint = Paint()
 
     private var widthPerDay: Int = 0
     private var visibleDays: Int = DEFAULT_VISIBLE_DAYS
@@ -159,13 +182,16 @@ class WeekView @JvmOverloads constructor(
     private var eventTextPaint = TextPaint(Paint.ANTI_ALIAS_FLAG)
 
     private var timelineTextSize = 0
-    private var timelineWidth = 0
+    private var timelineTextColor = Color.BLACK
+    private var timelineAllDayTextColor = Color.BLACK
+    private val timelineWidth
+        get() =  timelinePadding.left + timelineTextWidth + timelinePadding.right
     private var hourHeight = 0
     private var hourMinHeight = 0
     private var hourMaxHeight = 0
     private var timelineTextWidth = 0
     private var timelineTextHeight = 0
-    private var timelineHorizontalPadding = 0
+    private var timelinePadding = Rect()
     private val timelineTextPaint : Paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         textAlign = Paint.Align.RIGHT
     }
@@ -175,23 +201,34 @@ class WeekView @JvmOverloads constructor(
     private val timeNowPaint : Paint = Paint()
 
     private var dayOfWeekTextSize = 0
-    private var dayOfWeekVerticalPadding = 0
+    private var dayOfWeekPadding : Rect = Rect()
+    private var dayOfWeekTextSpace = 0
+    private val dayOfWeekHeight
+        get() = dayOfWeekPadding.top + dayOfWeekTextHeight + dayOfWeekTextSpace + dayOfWeekTodayBackgroundSize + dayOfWeekPadding.bottom
+
     private var dayOfWeekTextHeight = 0
-    private val dayOfWeekHeight get() = dayOfWeekTextHeight + dayOfWeekVerticalPadding
     private var dayOfWeekTextColor = 0
+    private var dayOfWeekTextNumberSize = 0
+    private var dayOfWeekTextNumberHeight = 0
+    private var dayOfWeekTextNumberColor = Color.WHITE
+
     private var dayOfWeekTodayTextColor = 0
+    private var dayOfWeekTodayBackgroundSize = 0
     private var dayOfWeekTodayBackgroundColor = 0
+
+
     private var dayOfWeekSundayTextColor = 0
     private var dayOfWeekSaturdayTextColor = 0
     private val dayOfWeekTextPaint : Paint = getDefaultDayOfWeekPaint()
+    private val dayOfWeekTextNumberPaint : Paint = getDefaultDayOfWeekPaint()
     private val dayOfWeekTodayTextPaint : Paint = getDefaultDayOfWeekPaint()
     private val dayOfWeekTodayBackgroundPaint : Paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val dayOfWeekSundayTextPaint : Paint = getDefaultDayOfWeekPaint()
     private val dayOfWeekSaturdayTextPaint : Paint = getDefaultDayOfWeekPaint()
 
-    private var allDayEventText = ""
-    private var allDayTextWidth = 0
-    private var allDayEventTextSize = 0
+    private var timelineAllDayEventText = ""
+    private var timelineAllDayTextWidth = 0
+    private var timelineAllDayEventTextSize = 0
     private var allDayAreaHeight = 0
 
     private var dayBackgroundColor = 0
@@ -199,9 +236,9 @@ class WeekView @JvmOverloads constructor(
     private var todayBackgroundColor = 0
     private var todayBackgroundPaint = Paint()
 
-    private val headerHeight get() = dayOfWeekHeight + allDayAreaHeight
+    private val headerHeight get() = (dayOfWeekHeight + allDayAreaHeight + (lineStrokeWidth * 2)).toInt()
 
-    private val highlightRect = Rect()
+    private val highlightRect = RectF()
     private var highlightColor = Color.WHITE
     private var highlightPaint = Paint()
     private var highlightStrokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -211,7 +248,7 @@ class WeekView @JvmOverloads constructor(
     private val highlightEmphasisTimelineTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         textAlign = Paint.Align.RIGHT
     }
-    private var highlightStrokeWidth = 0
+    private var highlightStrokeWidth = 0f
 
     private var scaledTouchSlop = 0
     private var minimumFlingVelocity = 0
@@ -450,22 +487,29 @@ class WeekView @JvmOverloads constructor(
 
     init {
         with(context.theme.obtainStyledAttributes(attrs, R.styleable.WeekView, defStyleAttr, 0)){
+            // Common
             textSize = getDimensionPixelSize(R.styleable.WeekView_android_textSize,
                 context.toSP(DEFAULT_TEXT_SIZE).toInt())
             canMovePastDate = getBoolean(R.styleable.WeekView_canMovePastDate, canMovePastDate)
 
-            // Event
-            //eventCornerRadius = getDimension(R.styleable.WeekView_eventCornerRadius,
-            //    context.toDP(DEFAULT_EVENT_CORNER_RADIUS))
-            eventTitlePadding = getDimension(R.styleable.WeekView_eventTitlePadding, context.toDP(
-                DEFAULT_EVENT_TITLE_PADDING))
-            eventTextColor = getColor(R.styleable.WeekView_eventTextColor, DEFAULT_EVENT_TEXT_COLOR.toInt())
-            eventTextSize = getDimensionPixelSize(R.styleable.WeekView_eventTextSize, textSize)
-
-            editEventColor = getColor(R.styleable.WeekView_editEventColor, DEFAULT_HIGHLIGHT_COLOR.toInt())
-            editEventText = getString(R.styleable.WeekView_editEventText) ?: ""
-
-            pastEventColor = getColor(R.styleable.WeekView_pastEventColor, DEFAULT_PAST_EVENT_COLOR)
+            // dayOfWeek
+            dayOfWeekPadding.top = getDimensionPixelSize(R.styleable.WeekView_dayOfWeekTopPadding,
+                context.toDP(DEFAULT_DAY_OF_WEEK_TOP_PADDING).toInt())
+            dayOfWeekPadding.bottom = getDimensionPixelSize(R.styleable.WeekView_dayOfWeekBottomPadding,
+                context.toDP(DEFAULT_DAY_OF_WEEK_BOTTOM_PADDING).toInt())
+            dayOfWeekTextSpace = getDimensionPixelSize(R.styleable.WeekView_dayOfWeekTextSpace,
+                context.toDP(DEFAULT_DAY_OF_WEEK_TEXT_SPACE).toInt())
+            dayOfWeekTextNumberSize = getDimensionPixelSize(R.styleable.WeekView_dayOfWeekTextNumberSize,
+                context.toDP(DEFAULT_DAY_OF_WEEK_TEXT_NUMBER_SIZE).toInt())
+            dayOfWeekTextNumberColor = getColor(R.styleable.WeekView_dayOfWeekTextNumberColor, DEFAULT_DAY_OF_WEEK_TEXT_NUMBER_COLOR.toInt())
+            dayOfWeekTextSize = getDimensionPixelSize(R.styleable.WeekView_dayOfWeekTextSize, textSize)
+            dayOfWeekTextColor = getColor(R.styleable.WeekView_dayOfWeekTextColor, DEFAULT_DAY_OF_WEEK_TEXT_COLOR.toInt())
+            dayOfWeekTodayTextColor = getColor(R.styleable.WeekView_dayOfWeekTodayTextColor, DEFAULT_DAY_OF_WEEK_TODAY_TEXT_COLOR.toInt())
+            dayOfWeekTodayBackgroundSize = getDimensionPixelSize(R.styleable.WeekView_dayOfWeekTodayBackgroundSize,
+                context.toDP(DEFAULT_DAY_OF_WEEK_TODAY_BACKGROUND_SIZE).toInt())
+            dayOfWeekTodayBackgroundColor = getColor(R.styleable.WeekView_dayOfWeekTodayBackgroundColor, DEFAULT_DAY_OF_WEEK_TODAY_BACKGROUND_COLOR.toInt())
+            dayOfWeekSundayTextColor = getColor(R.styleable.WeekView_dayOfWeekSundayTextColor, DEFAULT_DAY_OF_WEEK_SUNDAY_TEXT_COLOR.toInt())
+            dayOfWeekSaturdayTextColor = getColor(R.styleable.WeekView_dayOfWeekSaturdayTextColor, DEFAULT_DAY_OF_WEEK_SATURDAY_TEXT_COLOR.toInt())
 
             // Timeline
             hourHeight = getDimensionPixelSize(R.styleable.WeekView_hourHeight,
@@ -474,42 +518,59 @@ class WeekView @JvmOverloads constructor(
                 context.toDP(DEFAULT_HOUR_HEIGHT_MIN).toInt())
             hourMaxHeight = getDimensionPixelSize(R.styleable.WeekView_hourMaxHeight,
                 context.toDP(DEFAULT_HOUR_HEIGHT_MAX).toInt())
-            timelineTextSize = getDimensionPixelSize(R.styleable.WeekView_timelineTextSize, textSize)
-            timelineHorizontalPadding = getDimensionPixelSize(R.styleable.WeekView_timelineHorizontalPadding,
-                context.toDP(DEFAULT_TIMELINE_HORIZONTAL_PADDING).toInt())
+            timelineTextSize = getDimensionPixelSize(R.styleable.WeekView_timelineTextSize,
+                context.toDP(DEFAULT_TIMELINE_TEXT_SIZE).toInt())
+            timelineTextColor = getColor(R.styleable.WeekView_timelineTextColor, DEFAULT_TIMELINE_TEXT_COLOR.toInt())
+            timelinePadding.left = getDimensionPixelSize(R.styleable.WeekView_timelineLeftPadding,
+                context.toDP(DEFAULT_TIMELINE_LEFT_PADDING).toInt())
+            timelinePadding.right = getDimensionPixelSize(R.styleable.WeekView_timelineRightPadding,
+                context.toDP(DEFAULT_TIMELINE_RIGHT_PADDING).toInt())
 
             timeNowColor = getColor(R.styleable.WeekView_timeNowColor, DEFAULT_TIME_NOW_COLOR)
             timeNowStrokeWidth = getDimension(R.styleable.WeekView_timeNowStrokeWidth,
                 context.toDP(DEFAULT_TIME_NOW_STROKE_WIDTH))
 
-            // dayOfWeek
-            dayOfWeekVerticalPadding = getDimensionPixelSize(R.styleable.WeekView_dayOfWeekVerticalPadding,
-                context.toDP(DEFAULT_DAY_OF_WEEK_VERTICAL_PADDING).toInt())
-            dayOfWeekTextSize = getDimensionPixelSize(R.styleable.WeekView_dayOfWeekTextSize, textSize)
-            dayOfWeekTextColor = getColor(R.styleable.WeekView_dayOfWeekTextColor, DEFAULT_DAY_OF_WEEK_TEXT_COLOR.toInt())
-            dayOfWeekTodayTextColor = getColor(R.styleable.WeekView_dayOfWeekTodayTextColor, DEFAULT_DAY_OF_WEEK_TODAY_TEXT_COLOR.toInt())
-            dayOfWeekTodayBackgroundColor = getColor(R.styleable.WeekView_dayOfWeekTodayBackgroundColor, DEFAULT_DAY_OF_WEEK_TODAY_BACKGROUND_COLOR.toInt())
-            dayOfWeekSundayTextColor = getColor(R.styleable.WeekView_dayOfWeekSundayTextColor, DEFAULT_DAY_OF_WEEK_SUNDAY_TEXT_COLOR.toInt())
-            dayOfWeekSaturdayTextColor = getColor(R.styleable.WeekView_dayOfWeekSaturdayTextColor, DEFAULT_DAY_OF_WEEK_SATURDAY_TEXT_COLOR.toInt())
+            timelineAllDayTextColor = getColor(R.styleable.WeekView_timelineAllDayTextColor, timelineTextColor)
+            timelineAllDayEventText = getString(R.styleable.WeekView_timelineAllDayEventText) ?: DEFAULT_ALLDAY_TEXT
+            timelineAllDayEventTextSize = getDimensionPixelSize(R.styleable.WeekView_timelineAllDayEventTextSize, textSize)
+
+            // Event
+            eventCornerRadius = getDimension(R.styleable.WeekView_eventCornerRadius,
+                context.toDP(DEFAULT_EVENT_CORNER_RADIUS))
+            eventBlockPadding = getDimension(R.styleable.WeekView_eventBlockPadding,
+                context.toDP(DEFAULT_EVENT_BLOCK_PADDING))
+            eventTextHorizontalPadding = getDimension(R.styleable.WeekView_eventTextHorizontalPadding,
+                context.toDP(DEFAULT_EVENT_TEXT_HORIZONTAL_PADDING))
+            eventTextVerticalPadding = getDimension(R.styleable.WeekView_eventTextHorizontalPadding,
+                context.toDP(DEFAULT_EVENT_TEXT_VERTICAL_PADDING))
+            eventTextColor = getColor(R.styleable.WeekView_eventTextColor, DEFAULT_EVENT_TEXT_COLOR.toInt())
+            eventTextSize = getDimensionPixelSize(R.styleable.WeekView_eventTextSize, textSize)
+
+            pastEventColor = getColor(R.styleable.WeekView_pastEventColor, DEFAULT_PAST_EVENT_COLOR)
+
+            editEventColor = getColor(R.styleable.WeekView_editEventColor, DEFAULT_HIGHLIGHT_COLOR.toInt())
+            editEventText = getString(R.styleable.WeekView_editEventText) ?: ""
+            editEventStrokeColor = getColor(R.styleable.WeekView_editEventStrokeColor, DEFAULT_EDIT_EVENT_STROKE_COLOR.toInt())
+            editEventStrokeWidth = getDimension(R.styleable.WeekView_editEventStrokeWidth,
+                context.toDP(DEFAULT_EDIT_EVENT_STROKE_WIDTH))
+            editEventShadowColor = getColor(R.styleable.WeekView_editEventShadowColor, DEFAULT_EDIT_EVENT_SHADOW_COLOR.toInt())
 
             // AllDay
-            allDayEventText = getString(R.styleable.WeekView_allDayEventText) ?: DEFAULT_ALLDAY_TEXT
-            allDayEventTextSize = getDimensionPixelSize(R.styleable.WeekView_allDayEventTextSize, textSize)
-            allDayAreaHeight = getDimensionPixelSize(R.styleable.WeekView_allDayAreaHeight,
-                context.toDP(DEFAULT_ALLDAY_AREA_HEIGHT).toInt())
+            allDayAreaHeight = getDimensionPixelSize(R.styleable.WeekView_allDayAreaHeight, hourHeight)
 
             // Day
             dayBackgroundColor = getColor(R.styleable.WeekView_dayBackgroundColor, DEFAULT_DAY_BACKGROUND_COLOR.toInt())
             todayBackgroundColor = getColor(R.styleable.WeekView_todayBackgroundColor, DEFAULT_TODAY_BACKGROUND_COLOR.toInt())
 
-            gridSeparatorColor = getColor(R.styleable.WeekView_gridSeparatorColor, DEFAULT_GRID_SEPARATOR_COLOR)
-            gridSeparatorStrokeWidth = getDimension(R.styleable.WeekView_gridSeparatorStrokeWidth,
-                context.toDP(DEFAULT_GRID_SEPARATOR_STROKE_WIDTH))
+            lineColor = getColor(R.styleable.WeekView_lineColor, DEFAULT_LINE_COLOR.toInt())
+            lineAllDayColor = getColor(R.styleable.WeekView_lineAllDayColor, lineColor)
+            lineStrokeWidth = getDimension(R.styleable.WeekView_lineStrokeWidth,
+                context.toDP(DEFAULT_LINE_STROKE_WIDTH))
 
             // Highlight
             highlightColor = getColor(R.styleable.WeekView_highlightColor, DEFAULT_HIGHLIGHT_COLOR.toInt())
-            highlightStrokeWidth = getDimensionPixelSize(R.styleable.WeekView_highlightStrokeWidth, context.toDP(
-                DEFAULT_HIGHLIGHT_STROKE_WIDTH).toInt())
+            highlightStrokeWidth = getDimension(R.styleable.WeekView_highlightStrokeWidth,
+                context.toDP(DEFAULT_HIGHLIGHT_STROKE_WIDTH))
 
             recycle()
         }
@@ -525,26 +586,27 @@ class WeekView @JvmOverloads constructor(
     }
 
     private fun initialize(){
-        gridSeparatorPaint.let { p ->
-            p.color = gridSeparatorColor
-            p.strokeWidth = gridSeparatorStrokeWidth
+        linePaint.let { p ->
+            p.color = lineColor
+            p.strokeWidth = lineStrokeWidth
         }
 
         dayOfWeekTextPaint.let { p ->
             p.textSize = dayOfWeekTextSize.toFloat()
             p.color = dayOfWeekTextColor
         }
-
+        dayOfWeekTextNumberPaint.let { p ->
+            p.textSize = dayOfWeekTextNumberSize.toFloat()
+            p.color = dayOfWeekTextNumberColor
+        }
         dayOfWeekTodayTextPaint.let { p ->
-            p.textSize = dayOfWeekTextSize.toFloat()
+            p.textSize = dayOfWeekTextNumberSize.toFloat()
             p.color = dayOfWeekTodayTextColor
         }
-
         dayOfWeekSundayTextPaint.let { p ->
             p.textSize = dayOfWeekTextSize.toFloat()
             p.color = dayOfWeekSundayTextColor
         }
-
         dayOfWeekSaturdayTextPaint.let { p ->
             p.textSize = dayOfWeekTextSize.toFloat()
             p.color = dayOfWeekSaturdayTextColor
@@ -559,6 +621,12 @@ class WeekView @JvmOverloads constructor(
             p.typeface = Typeface.DEFAULT
             p.textSize = eventTextSize.toFloat()
             p.color = eventTextColor
+        }
+        editEventStrokePaint.let { p ->
+            p.color = editEventStrokeColor
+            p.strokeWidth = editEventStrokeWidth
+
+            p.setShadowLayer(3f, 0f, 1f, editEventShadowColor)
         }
 
         highlightPaint.color = (DEFAULT_HIGHLIGHT_BACKGROUND_ALPHA shl 24) or (highlightColor and 0x00ffffff)
@@ -576,7 +644,10 @@ class WeekView @JvmOverloads constructor(
             p.color = highlightColor
         }
 
-        timelineTextPaint.textSize = timelineTextSize.toFloat()
+        timelineTextPaint.let { p ->
+            p.textSize = timelineTextSize.toFloat()
+            p.color = timelineTextColor
+        }
 
         dayOfWeekTodayBackgroundPaint.color = dayOfWeekTodayBackgroundColor
         dayBackgroundPaint.color = dayBackgroundColor
@@ -604,6 +675,7 @@ class WeekView @JvmOverloads constructor(
         animator?.cancel()
         animator = null
     }
+
     private fun loadSchedules(weekDate: LocalDateTime, force: Boolean = false){
         val isSameWeek = current.isSameWeek(weekDate)
         if(isSameWeek && !force) return
@@ -685,17 +757,15 @@ class WeekView @JvmOverloads constructor(
         val standard = LocalDateTime.now()
 
         drawTimeline(canvas)
-        drawGrid(canvas, firstVisibleIndex, standard, startX)
-
-        canvas?.drawRect(timelineWidth * 1f, 0f, width * 1f, dayOfWeekHeight * 1f, dayBackgroundPaint)
+        drawGrid(canvas)
 
         for(index in firstVisibleIndex + 1 .. firstVisibleIndex + visibleDays + 1){
             val date = standard.plusDays((index - 1).toLong())
             val dt = getCurrentDayType(date)
 
             drawDayOfWeek(canvas, date, offsetX, dt)
-            drawCommonEvent(canvas, date, offsetX, dt)
             drawAllDayEvent(canvas, date, offsetX, dt)
+            drawCommonEvent(canvas, date, offsetX, dt)
 
             if(index == firstVisibleIndex + 1){
                 firstVisibleDate = date
@@ -898,6 +968,7 @@ class WeekView @JvmOverloads constructor(
             with(it){
                 val t = startAt!!.toMinuteOfHours() * 1f
 
+                // 편집 대상 시간 종료 시간이 24:00 인 경우, 다음날 00시로 처리되기 때문에 View 에 표시가 되지 않아 따로 처리할 수 있도록 변경
                 val et = if(endAt!!.hour != 0) endAt!! else endAt!!.minusNanos(1)
                 val b = et.toMinuteOfHours() * 1f
 
@@ -926,24 +997,17 @@ class WeekView @JvmOverloads constructor(
     }
 
     private fun measureTimeline(){
-        val temp = today
-
-        for(i in 0 until 24){
-            val str = temp.withTime(i, 0).toText("HH:mm")
-
-            timelineTextWidth = timelineTextWidth.coerceAtLeast(timelineTextPaint.measureText(str).toInt())
-
-            if(i == 23)
-                timelineTextHeight = Rect().apply { timelineTextPaint.getTextBounds(str, 0, str.length, this) }.height()
-        }
-
-        timelineWidth = timelineTextWidth + (timelineHorizontalPadding * 2)
-        allDayTextWidth = timelineTextPaint.measureText(allDayEventText).toInt()
+        timelineTextWidth = timelineTextPaint.measureText(timelineAllDayEventText).toInt()
+        timelineTextHeight = Rect().apply { timelineTextPaint.getTextBounds(timelineAllDayEventText, 0, timelineAllDayEventText.length, this) }.height()
     }
 
     private fun measureDayOfWeekHeight(){
-        dayOfWeekTextHeight = today.toText(DEFAULT_FORMAT_DAY_OF_WEEK).run {
+        dayOfWeekTextHeight = today.toText("E").run {
             Rect().also { r -> dayOfWeekTextPaint.getTextBounds(this, 0, length, r) }.height()
+        }
+
+        dayOfWeekTextNumberHeight = today.toText(DEFAULT_FORMAT_DAY_OF_WEEK).run {
+            Rect().also { r -> dayOfWeekTextNumberPaint.getTextBounds(this, 0, length, r) }.height()
         }
     }
 
@@ -960,110 +1024,90 @@ class WeekView @JvmOverloads constructor(
     }
 
     private fun drawTimelineText(canvas: Canvas?, time: LocalDateTime, doEdit: Boolean = false){
-        val str = time.toText("HH:mm")
-        val top = origin.y + headerHeight + (hourHeight / 2) + (hourHeight * time.hour) + (timelineTextHeight / 2)
+        val str = time.toText("HH")
+        val top = origin.y + headerHeight + (hourHeight * time.hour) + timelineTextHeight
 
         if(top < height){
-            val p = if(doEdit) highlightEmphasisTimelineTextPaint else timelineTextPaint
+            val p = if(doEdit) highlightEmphasisTimelineTextPaint else { timelineTextPaint.apply { color = timelineTextColor } }
 
-            canvas?.drawText(str, (timelineTextWidth + timelineHorizontalPadding).toFloat(), top, p)
+            canvas?.drawText(str, timelineWidth - timelinePadding.right * 1f, top + 20, p)
         }
     }
 
-    private fun drawGrid(canvas: Canvas?, firstVisibleIndex: Int, firstDayOfWeek: LocalDateTime, startX: Float){
+    private fun drawGrid(canvas: Canvas?){
         canvas?.run {
             save()
+            //clipRect(timelineWidth, dayOfWeekHeight, width, height)
 
-            clipRect(0, dayOfWeekHeight, width, height)
+            val lines = FloatArray(2 * 4)
 
-            val lines = ((height - headerHeight) / hourHeight + 1) * (visibleDays + 1)
-            val (h, v) = FloatArray(lines * 4) to FloatArray(lines * 4)
+            for(i in 0 until 2){
+                var y1 = dayOfWeekHeight + (i * allDayAreaHeight) * 1f
+                if(i > 0) y1 += (lineStrokeWidth * 2)
 
-            var (offsetX, offsetY) = startX to headerHeight
-            var (x1, y1) = .0f to .0f
-            var (x2, y2) = .0f to .0f
+                lines[i * 4] = 0f
+                lines[i * 4 + 1] = y1
+                lines[i * 4 + 2] = width * 1f
+                lines[i * 4 + 3] = y1
+            }
 
-            for(index in firstVisibleIndex + 1 .. firstVisibleIndex + visibleDays + 1){
-                val date = firstDayOfWeek.plusDays((index - 1) * 1L)
-                val left = offsetX.coerceAtLeast(timelineWidth.toFloat())
+            linePaint.color = lineAllDayColor
+            drawLines(lines, linePaint)
 
-                // 배경색 설정 당일인 경우에 다른색으로도 표시 가능
-                if(widthPerDay + offsetX - left > 0){
-                    drawRect(left, top.toFloat(), offsetX + widthPerDay, height.toFloat(),
-                        if(today.isSameDay(date)) todayBackgroundPaint
-                        else dayBackgroundPaint)
-                }
+            restore()
 
-                var i = 0
-                for(hour in 1 .. 25) {
-                    val top = offsetY + origin.y + (hourHeight * hour)
+            // 일반 스케쥴에 그어준다.
+            save()
+            clipRect(timelineWidth, headerHeight, width, height)
 
-                    if(top > offsetY - gridSeparatorStrokeWidth
-                        && top < height
-                        && offsetX + widthPerDay - left > 0){
-
-                        if(i < 24){
-                            h[i * 4] = left
-                            h[i * 4 + 1] = top
-                            h[i * 4 + 2] = offsetX + widthPerDay
-                            h[i * 4 + 3] = top
-                        }
-
-                        x1 = left
-                        y1 = top + 10
-                        x2 = left
-                        y2 = top - (hourHeight * 2)
-
-                        v[i * 4] = x1
-                        v[i * 4 + 1] = y1
-                        v[i * 4 + 2] = x2
-                        v[i * 4 + 3] = y2
-
-                        i++
-                    }
-                }
-
-                // Grid 를 그려준다
-                drawLines(h, gridSeparatorPaint)
-                drawLines(v, gridSeparatorPaint)
-
-                drawLine(x1, y1 + hourHeight, x2, y2, gridSeparatorPaint)
-
-                offsetX += widthPerDay
+            linePaint.color = lineColor
+            val offsetY = headerHeight + origin.y
+            for(i in 1 until 24){
+                drawLineWithHour(this, i, offsetY)
             }
 
             restore()
         }
     }
 
-    private fun drawDayOfWeek(canvas: Canvas?, date: LocalDateTime, offsetX: Float, dayType: Int, doEdit: Boolean = false){
+    private fun drawLineWithHour(canvas: Canvas?, hour: Int, offsetY: Float, doEdit: Boolean = false){
+        val (x, y) = timelineWidth * 1f to offsetY + (hourHeight * hour) + lineStrokeWidth
+        val p = if(doEdit) highlightStrokePaint else linePaint
+
+        if(y < height)
+            canvas?.drawLine(x, y, width * 1f, y, p)
+    }
+
+    private fun drawDayOfWeek(canvas: Canvas?, date: LocalDateTime, offsetX: Float, dayType: Int){
         canvas?.run {
             save()
+
             clipRect(timelineWidth, 0, width, dayOfWeekHeight)
 
-            val (x, y) = offsetX + (widthPerDay / 2) to dayOfWeekHeight - (dayOfWeekVerticalPadding / 2f)
+            val (x1, y1) = offsetX + (widthPerDay / 2) to (dayOfWeekPadding.top + dayOfWeekTextHeight) * 1f
+            val (x2, y2) = offsetX + (widthPerDay / 2) to dayOfWeekHeight - dayOfWeekPadding.bottom - ((dayOfWeekTodayBackgroundSize / 2f) - (dayOfWeekTextNumberHeight / 2f))
 
             val isFirstDayOfMonth = YearMonth.from(date).atDay(1).isSameDay(date.toLocalDate())
-            val str = date.toText(if(!isFirstDayOfMonth) DEFAULT_FORMAT_DAY_OF_WEEK else "E M.d")
+            val dayOfWeekText = date.toText("E")
+            val dayOfWeekTextNumber = date.toText(if(!isFirstDayOfMonth) DEFAULT_FORMAT_DAY_OF_WEEK else "M.d")
 
-            val p = when {
-                dayType == DayType.TODAY -> dayOfWeekTodayTextPaint
-                doEdit -> highlightEmphasisDayOfWeekTextPaint
-                else ->
-                    when(date.dayOfWeek){
-                        DayOfWeek.SUNDAY -> dayOfWeekSundayTextPaint
-                        DayOfWeek.SATURDAY -> dayOfWeekSaturdayTextPaint
-                        else -> dayOfWeekTextPaint
-                    }
+            val textPaint = when(date.dayOfWeek){
+                DayOfWeek.SUNDAY -> dayOfWeekSundayTextPaint
+                DayOfWeek.SATURDAY -> dayOfWeekSaturdayTextPaint
+                else -> dayOfWeekTextPaint
             }
+            
+            val textNumberPaint = if(dayType == DayType.TODAY) dayOfWeekTodayTextPaint else dayOfWeekTextNumberPaint
 
             if(dayType == DayType.TODAY){
-                val top = (dayOfWeekVerticalPadding / 4f)
+                val radius = dayOfWeekTodayBackgroundSize / 2f
+                val y = y2 - (dayOfWeekTextNumberHeight / 2f)
 
-                drawRoundRect(offsetX, top, offsetX + widthPerDay,  ((dayOfWeekHeight * 1f) - (top / 2f)), 10f, 10f, dayOfWeekTodayBackgroundPaint)
+                drawCircle(x2, y, radius, dayOfWeekTodayBackgroundPaint)
             }
 
-            drawText(str, x, y, p)
+            drawText(dayOfWeekText, x1, y1, textPaint)
+            drawText(dayOfWeekTextNumber, x2, y2, textNumberPaint)
 
             restore()
         }
@@ -1072,12 +1116,14 @@ class WeekView @JvmOverloads constructor(
     private fun drawCommonEvent(canvas: Canvas?, date: LocalDateTime, offsetX: Float, type: Int){
         canvas?.run {
             save()
-            clipRect(timelineWidth * 1f, headerHeight * 1f, width * 1f, height * 1f)
+            clipRect(timelineWidth * 1f, headerHeight * 1f + lineStrokeWidth, width * 1f, height * 1f)
 
+            drawEmptyRect(this, offsetX)
+            drawCommonRect(this, date, offsetX, type)
+
+            /*
             val left = offsetX.coerceAtLeast(timelineWidth.toFloat())
             val top = headerHeight
-
-            drawCommonRect(this, date, offsetX, type)
 
             // 현재 날의 시간 위치를 수평선으로 보여 준다.
             if(type == DayType.TODAY){
@@ -1085,6 +1131,35 @@ class WeekView @JvmOverloads constructor(
                 val beforeNow = today.run { (hour + (minute / 60f)) * hourHeight }
 
                 drawLine(left, barOffset + beforeNow, offsetX + widthPerDay, barOffset + beforeNow, timeNowPaint)
+            }
+            */
+
+            restore()
+        }
+    }
+
+    private fun drawEmptyRect(canvas: Canvas?, startX: Float){
+        canvas?.run {
+            save()
+
+            val offsetY = origin.y + headerHeight + lineStrokeWidth
+
+            val l = startX
+            val r = l + widthPerDay
+
+            for(i in 0 until 24){
+                var t = offsetY + (hourHeight * i)
+                if(t > 0) t += lineStrokeWidth
+
+                val b = t + hourHeight - (lineStrokeWidth * 2)
+
+                if(t < height)
+                    drawRoundRect(
+                        l + eventBlockPadding,
+                        t + eventBlockPadding,
+                        r - eventBlockPadding,
+                        b - eventBlockPadding,
+                        eventCornerRadius, eventCornerRadius, eventEmptyPaint)
             }
 
             restore()
@@ -1105,11 +1180,11 @@ class WeekView @JvmOverloads constructor(
                 val offsetY = origin.y + headerHeight
 
                 val l = startX + (rect.left * widthPerDay)
-                val t = offsetY + ((hourHeight * 24 * rect.top) / 1440)
+                val t = offsetY + ((hourHeight * 24 * rect.top) / 1440) + (lineStrokeWidth * 2)
                 val r = l + (rect.right * widthPerDay)
                 val b = offsetY + ((hourHeight * 24 * rect.bottom) / 1440)
 
-                rect.setAbsoluteRect(l, t, r, b)
+                rect.setAbsoluteRect(l, t, r, b, eventBlockPadding)
 
                 drawEventArea(this, rect, type)
             }
@@ -1118,17 +1193,21 @@ class WeekView @JvmOverloads constructor(
         }
     }
 
-    private fun drawEventText(canvas: Canvas?, event: WeekEvent, l: Float, t: Float, r: Float, b: Float){
+    private fun drawEventText(canvas: Canvas?, rect: WeekRect){
+        val (e, bound) = rect.run { originalEvent to absoluteRect }
+
+        eventTextPaint.color = if(e.isBrightColor) eventTextColor else Color.WHITE
+
         canvas?.run {
             val sb = SpannableStringBuilder()
-            if(event.title.isNotBlank()){
+            if(e.title.isNotBlank()){
                 with(sb){
-                    append(event.title)
+                    append(e.title)
                     setSpan(StyleSpan(Typeface.NORMAL), 0, length, 0)
                 }
             }
 
-            val (availWidth, availHeight) = r - l - eventTitlePadding to b - t - eventTitlePadding
+            val (availWidth, availHeight) = bound.width() - eventTextHorizontalPadding to bound.height() - eventTextVerticalPadding
 
             var sl = StaticLayout(sb, eventTextPaint, availWidth.toInt(), Layout.Alignment.ALIGN_NORMAL, 1f, 0f, false)
             val lineHeight = sl.height / sl.lineCount
@@ -1151,7 +1230,7 @@ class WeekView @JvmOverloads constructor(
 
                 save()
 
-                translate(l + (eventTitlePadding / 2), t + (eventTitlePadding / 2))
+                translate(bound.left + (eventTextHorizontalPadding / 2), bound.top + (eventTextVerticalPadding / 2))
                 sl.draw(this)
 
                 restore()
@@ -1163,16 +1242,14 @@ class WeekView @JvmOverloads constructor(
         canvas?.run {
             save()
 
-            drawText(allDayEventText,
-                timelineWidth + timelineHorizontalPadding - allDayTextWidth * 1f,
+            timelineTextPaint.color = timelineAllDayTextColor
+
+            drawText(timelineAllDayEventText,
+                timelineWidth - timelinePadding.right - timelineAllDayTextWidth * 1f,
                 dayOfWeekHeight + (allDayAreaHeight / 2) + (timelineTextHeight / 2f),
                 timelineTextPaint)
 
-            val left = offsetX.coerceAtLeast(timelineWidth.toFloat())
-
             drawAllDayRect(this, date, offsetX, type)
-
-            drawLine(left, headerHeight * 1f, width * 1f, headerHeight * 1f, gridSeparatorPaint)
 
             restore()
         }
@@ -1189,11 +1266,11 @@ class WeekView @JvmOverloads constructor(
             for(rect in rects){
                 if(!date.isSameDay(rect.startAt) || !rect.event.isAllDay()) continue
 
-                val (l, t) = offsetX to dayOfWeekHeight + (allDayAreaHeight * rect.top)
-                val r = l + (rect.right * widthPerDay)
-                val b = t + (allDayAreaHeight * rect.bottom)
+                val (l, t) = offsetX to dayOfWeekHeight + lineStrokeWidth * 1f
+                val r = l + widthPerDay
+                val b = t + allDayAreaHeight
 
-                rect.setAbsoluteRect(l, t, r, b)
+                rect.setAbsoluteRect(l, t, r, b, eventBlockPadding)
 
                 drawEventArea(this, rect, type)
             }
@@ -1211,19 +1288,8 @@ class WeekView @JvmOverloads constructor(
         }
 
         with(canvas){
-            drawRect(absRect, painter)
-
-            if(rect.isBrightColor){
-                strokePainter.color = rect.strokeColor
-                eventTextPaint.color = eventTextColor
-            }else{
-                eventTextPaint.color = Color.WHITE
-                strokePainter.color = Color.WHITE
-            }
-
-            drawRect(absRect, strokePainter)
-
-            drawEventText(canvas, rect.originalEvent, absRect.left, absRect.top, absRect.right, absRect.bottom)
+            drawRoundRect(absRect, eventCornerRadius, eventCornerRadius, painter)
+            drawEventText(canvas, rect)
         }
     }
 
@@ -1237,7 +1303,8 @@ class WeekView @JvmOverloads constructor(
             save()
 
             // Dim 을 담당한다.
-            drawRect(0f, 0f, width.toFloat(), height.toFloat(), editEventDimPaint)
+            drawRect(timelineWidth * 1f, (dayOfWeekHeight + lineStrokeWidth) * 1f, width * 1f, height * 1f, editEventDimPaint)
+            clipRect(timelineWidth * 1f, 0f, width * 1f, height * 1f)
 
             val offsetY = origin.y + headerHeight
 
@@ -1253,43 +1320,36 @@ class WeekView @JvmOverloads constructor(
                         continue
                     }
 
-                    val l = offsetX + (rect.left * widthPerDay)
-                    val t = offsetY + ((hourHeight * 24 * rect.top) / 1440)
-                    val r = l + (rect.right * widthPerDay)
-                    val b = offsetY + ((hourHeight * 24 * rect.bottom) / 1440)
+                    val l = offsetX + (rect.left * widthPerDay) + highlightStrokeWidth
+                    val t = offsetY + ((hourHeight * 24 * rect.top) / 1440) + lineStrokeWidth
+                    val r = l + (rect.right * widthPerDay) - highlightStrokeWidth
+                    val b = offsetY + ((hourHeight * 24 * rect.bottom) / 1440) - lineStrokeWidth
 
-                    rect.setAbsoluteRect(l, t, r, b)
-                    highlightRect.left = l.toInt()
-                    highlightRect.right = r.toInt()
+                    rect.setAbsoluteRect(l, t, r, b, eventBlockPadding)
+                    highlightRect.left = l
+                    highlightRect.right = r
 
                     // 하이라이트 & 딤을 해주면 일자와 시간이 전부 알파처리되기 떄문에
-                    drawRect(highlightRect, highlightPaint)
-                    drawRect(highlightRect, highlightStrokePaint)
+                    drawRoundRect(highlightRect, eventCornerRadius, eventCornerRadius, highlightPaint)
+                    drawRoundRect(highlightRect, eventCornerRadius, eventCornerRadius, highlightStrokePaint)
 
                     // 그 위로 새로 덧그려준다
                     val startAt = rect.originalEvent.startAt!!
                     drawTimelineText(this, startAt, true)
+                    drawLineWithHour(this, startAt.hour, offsetY, true)
 
                     val dt = getCurrentDayType(date)
-                    drawDayOfWeek(this, date, offsetX, dt, true)
+                    drawDayOfWeek(this, date, offsetX, dt)
 
                     if(l < r
                         && l < width && t < height
                         && r > timelineWidth && b > headerHeight){
                         painter.color = rect.backgroundColor
 
-                        drawRect(rect.absoluteRect, painter)
+                        drawRoundRect(rect.absoluteRect, eventCornerRadius, eventCornerRadius, painter)
+                        drawRoundRect(rect.absoluteRect, eventCornerRadius, eventCornerRadius, editEventStrokePaint)
 
-                        if(rect.isBrightColor){
-                            strokePainter.color = rect.strokeColor
-                            drawRect(rect.absoluteRect, strokePainter)
-
-                            eventTextPaint.color = eventTextColor
-                        }else{
-                            eventTextPaint.color = Color.WHITE
-                        }
-
-                        drawEventText(this, rect.originalEvent, l, t, r, b)
+                        drawEventText(this, rect)
                     }
                 }
 
@@ -1532,19 +1592,18 @@ class WeekView @JvmOverloads constructor(
      * @param smoothScroll 스크롤 애니메이션 여부
      */
     fun scrollToTime(hour: Int, smoothScroll: Boolean = true){
+        val y = (hourHeight * hour) + (lineStrokeWidth * 2)
         if(!isDrawn){
-            val offset = ((hourHeight * hour) - height)
+            val offset = y - height
 
-            origin.y = -offset.toFloat()
+            origin.y = -offset
         }else{
             if(!smoothScroll){
-                val offset = hourHeight * hour
-
-                origin.y = -offset.toFloat()
+                origin.y = -y
 
                 invalidate()
             }else{
-                val dy = origin.y + (hourHeight * hour)
+                val dy = origin.y + y
 
                 scrollOriginTo(0, -dy.toInt())
             }
@@ -1630,11 +1689,11 @@ class WeekView @JvmOverloads constructor(
         val t = highlightStrokeWidth
         val b = height - t
 
-        highlightRect.set(0, t, 0, b)
+        highlightRect.set(0f, t * 1f, 0f, b * 1f)
     }
 
     private fun resetEditBounds(){
-        highlightRect.set(0, 0, 0, 0)
+        highlightRect.set(0f, 0f, 0f, 0f)
     }
 
     /**
@@ -1741,6 +1800,16 @@ class WeekView @JvmOverloads constructor(
      */
     fun getCurrentDate() = current.run { listOf(year, monthValue, weekOfYear()) }
 
+    fun setDayOfWeekPadding(top: Int = dayOfWeekPadding.top, bottom: Int = dayOfWeekPadding.bottom){
+        dayOfWeekPadding.top = context.toDP(top).toInt()
+        dayOfWeekPadding.bottom = context.toDP(bottom).toInt()
+    }
+
+    fun setTimelinePadding(left: Int = timelinePadding.left, right: Int = timelinePadding.right){
+        timelinePadding.left = left
+        timelinePadding.right = right
+    }
+
     private fun prepareScheduleInternal(start: LocalDateTime, end: LocalDateTime){
         isEditMode = true
 
@@ -1776,7 +1845,7 @@ class WeekView @JvmOverloads constructor(
             addUpdateListener { highlightStrokePaint.color = it.animatedValue as Int }
         }
 
-        val anim4 = ValueAnimator.ofArgb(Color.TRANSPARENT, 0x80FFFFFF.toInt()).apply {
+        val anim4 = ValueAnimator.ofArgb(Color.TRANSPARENT, 0xBFFFFFFF.toInt()).apply {
             addUpdateListener { editEventDimPaint.color = it.animatedValue as Int; invalidate() }
         }
 
