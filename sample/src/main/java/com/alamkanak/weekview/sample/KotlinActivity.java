@@ -118,7 +118,7 @@ public class KotlinActivity extends AppCompatActivity {
                 // 14:00 ~ 16:00
                 WeekEvent e3 = new WeekEvent("AF003"+date);
                 e3.setBackgroundColor("#46a3f0");
-                e3.setTitle("스터디");
+                e3.setTitle("텍스트가 길고 긴 스터디 ABCDEFG");
 
                 startAt
                     = LocalDateTime.of(

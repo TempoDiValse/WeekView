@@ -26,14 +26,7 @@ open class WeekEvent: Cloneable {
     private var isAllDay: Boolean = false
 
     private var _color: Int = Color.BLACK
-
     val backgroundColor get() = _color
-
-    /**
-     * #DCDCDC 보다 밝은 경우에는 STROKE 값을 전달 해준다. 어두운 경우에는 -1을 전달 한다
-     */
-    val strokeColor get() = if(backgroundColor > 0xFFDCDCDC.toInt()) 0xFF999999.toInt() else -1
-    val isBrightColor get() = strokeColor != -1
 
     constructor(id: String, start: LocalDateTime, end: LocalDateTime, isAllDay: Boolean){
         this.id = id

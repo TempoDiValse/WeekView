@@ -89,9 +89,10 @@ class WeekView @JvmOverloads constructor(
         private const val DEFAULT_EVENT_BLOCK_EMPTY_BACKGROUND = 0xFFF7F8FC
         private const val DEFAULT_EVENT_TEXT_HORIZONTAL_PADDING = 6f
         private const val DEFAULT_EVENT_TEXT_VERTICAL_PADDING = 8f
-        private const val DEFAULT_EVENT_TEXT_COLOR = 0xFF333333
+        private const val DEFAULT_EVENT_TEXT_COLOR = 0xFF111111
         private const val DEFAULT_EVENT_TEXT_MAX_LINES = 2f
 
+        private const val DEFAULT_EDIT_EVENT_DIM = 0xBFFFFFFF
         private const val DEFAULT_EDIT_EVENT_STROKE_WIDTH = 1f
         private const val DEFAULT_EDIT_EVENT_STROKE_COLOR = 0xFFFFFFFF
         private const val DEFAULT_EDIT_EVENT_SHADOW_COLOR = 0x4D000000
@@ -629,11 +630,8 @@ class WeekView @JvmOverloads constructor(
             p.setShadowLayer(3f, 0f, 1f, editEventShadowColor)
         }
 
-        highlightPaint.color = (DEFAULT_HIGHLIGHT_BACKGROUND_ALPHA shl 24) or (highlightColor and 0x00ffffff)
-        highlightStrokePaint.let { p ->
-            p.color = highlightColor
-            p.strokeWidth = highlightStrokeWidth.toFloat()
-        }
+        highlightStrokePaint.strokeWidth = highlightStrokeWidth
+
         highlightEmphasisDayOfWeekTextPaint.let { p ->
             p.textSize = dayOfWeekTextSize.toFloat()
             p.color = highlightColor
@@ -1193,48 +1191,64 @@ class WeekView @JvmOverloads constructor(
         }
     }
 
-    private fun drawEventText(canvas: Canvas?, rect: WeekRect){
+    private fun drawEventText(canvas: Canvas?, rect: WeekRect, gravity: Int = Gravity.TOP, typeface: Int = Typeface.NORMAL){
         val (e, bound) = rect.run { originalEvent to absoluteRect }
 
-        eventTextPaint.color = if(e.isBrightColor) eventTextColor else Color.WHITE
+        eventTextPaint.color = if(isBrightColor(e.backgroundColor)) eventTextColor else Color.WHITE
+
+        val sb = SpannableStringBuilder()
+        if(e.title.isNotBlank()){
+            with(sb){
+                append(e.title)
+                setSpan(StyleSpan(typeface), 0, length, 0)
+            }
+        }
+
+        val (availWidth, availHeight) = bound.width() - eventTextHorizontalPadding to bound.height() - eventTextVerticalPadding
+        val alignment = when(gravity){
+            Gravity.CENTER -> Layout.Alignment.ALIGN_CENTER
+            else -> Layout.Alignment.ALIGN_NORMAL
+        }
+
+        var sl = StaticLayout(sb, eventTextPaint, availWidth.toInt(), alignment, 1f, 0f, false)
+        val lineHeight = sl.height / sl.lineCount
+
+        if(availHeight < lineHeight) return
+
+        var availLineCount = (availHeight / lineHeight).coerceAtMost(DEFAULT_EVENT_TEXT_MAX_LINES)
+
+        do {
+            sl = StaticLayout(
+                TextUtils.ellipsize(sb, eventTextPaint, availLineCount * availWidth, TextUtils.TruncateAt.END),
+                eventTextPaint,
+                availWidth.toInt(),
+                alignment,
+                1f, 0f, false
+            )
+
+            availLineCount--
+        } while (sl.height > availHeight)
 
         canvas?.run {
-            val sb = SpannableStringBuilder()
-            if(e.title.isNotBlank()){
-                with(sb){
-                    append(e.title)
-                    setSpan(StyleSpan(Typeface.NORMAL), 0, length, 0)
+            save()
+
+            var (x, y) = bound.left to bound.top
+            when(gravity){
+                Gravity.TOP -> {
+                    x += (eventTextHorizontalPadding / 2)
+                    y += (eventTextVerticalPadding / 2)
+                }
+
+                Gravity.CENTER -> {
+                    x += (bound.width() / 2) - (sl.width / 2)
+                    y += (bound.height() / 2) - (sl.height / 2)
                 }
             }
 
-            val (availWidth, availHeight) = bound.width() - eventTextHorizontalPadding to bound.height() - eventTextVerticalPadding
+            translate(x, y)
+            sl.draw(this)
 
-            var sl = StaticLayout(sb, eventTextPaint, availWidth.toInt(), Layout.Alignment.ALIGN_NORMAL, 1f, 0f, false)
-            val lineHeight = sl.height / sl.lineCount
-
-            if(availHeight >= lineHeight){
-                var availLineCount = (availHeight / lineHeight)
-                    .coerceAtMost(DEFAULT_EVENT_TEXT_MAX_LINES)
-
-                do {
-                    sl = StaticLayout(
-                        TextUtils.ellipsize(sb, eventTextPaint, availLineCount * availWidth, TextUtils.TruncateAt.END),
-                        eventTextPaint,
-                        availWidth.toInt(),
-                        Layout.Alignment.ALIGN_NORMAL,
-                        1f, 0f, false
-                    )
-
-                    availLineCount--
-                } while (sl.height > availHeight)
-
-                save()
-
-                translate(bound.left + (eventTextHorizontalPadding / 2), bound.top + (eventTextVerticalPadding / 2))
-                sl.draw(this)
-
-                restore()
-            }
+            restore()
         }
     }
 
@@ -1304,7 +1318,8 @@ class WeekView @JvmOverloads constructor(
 
             // Dim 을 담당한다.
             drawRect(timelineWidth * 1f, (dayOfWeekHeight + lineStrokeWidth) * 1f, width * 1f, height * 1f, editEventDimPaint)
-            clipRect(timelineWidth * 1f, 0f, width * 1f, height * 1f)
+
+            restore()
 
             val offsetY = origin.y + headerHeight
 
@@ -1329,9 +1344,16 @@ class WeekView @JvmOverloads constructor(
                     highlightRect.left = l
                     highlightRect.right = r
 
+                    save()
+
+                    clipRect(timelineWidth * 1f, 0f, width * 1f, height * 1f)
                     // 하이라이트 & 딤을 해주면 일자와 시간이 전부 알파처리되기 떄문에
                     drawRoundRect(highlightRect, eventCornerRadius, eventCornerRadius, highlightPaint)
                     drawRoundRect(highlightRect, eventCornerRadius, eventCornerRadius, highlightStrokePaint)
+
+                    restore()
+
+                    save()
 
                     // 그 위로 새로 덧그려준다
                     val startAt = rect.originalEvent.startAt!!
@@ -1341,6 +1363,11 @@ class WeekView @JvmOverloads constructor(
                     val dt = getCurrentDayType(date)
                     drawDayOfWeek(this, date, offsetX, dt)
 
+                    restore()
+
+                    save()
+                    clipRect(timelineWidth * 1f, 0f, width * 1f, height * 1f)
+
                     if(l < r
                         && l < width && t < height
                         && r > timelineWidth && b > headerHeight){
@@ -1349,16 +1376,22 @@ class WeekView @JvmOverloads constructor(
                         drawRoundRect(rect.absoluteRect, eventCornerRadius, eventCornerRadius, painter)
                         drawRoundRect(rect.absoluteRect, eventCornerRadius, eventCornerRadius, editEventStrokePaint)
 
-                        drawEventText(this, rect)
+                        drawEventText(this, rect, Gravity.CENTER, Typeface.BOLD)
                     }
+
+                    restore()
                 }
 
                 offsetX = startX
             }
-
-            restore()
         }
     }
+
+    /**
+     * #DCDCDC 보다 밝은 경우에는 다른 색을 표시할 수 있도록 한다.
+     * @param color 비교할 컬러 값
+     */
+    private fun isBrightColor(color: Int) : Boolean = (color and 0x00FFFFFF) > 0xDCDCDC
 
     private fun getCurrentDayType(date: LocalDateTime) = when {
         today.isBeforeDay(date) -> DayType.PAST
@@ -1815,8 +1848,8 @@ class WeekView @JvmOverloads constructor(
 
         editEvent = DummyWeekEvent().apply {
             title = editEventText
-
             setBackgroundColor(editEventColor)
+
             setStartAndEndDate(start, end)
         }
 
@@ -1833,20 +1866,29 @@ class WeekView @JvmOverloads constructor(
             = ldt.run { withTime(if(isStartOrEnd) hour else hour + 1, 0, 0) }
 
     private fun animatorHighlight() : Animator {
-        val anim1 = ValueAnimator.ofArgb(Color.TRANSPARENT, editEventColor).apply {
-            addUpdateListener { editEvent!!.setBackgroundColor(it.animatedValue as Int) }
+        val anim1 = ValueAnimator.ofInt(0, 0xFF).apply {
+            addUpdateListener {
+                val color = (it.animatedValue as Int shl 24) or (editEventColor and 0x00FFFFFF)
+
+                editEvent!!.setBackgroundColor(color)
+            }
         }
 
-        val anim2 = ValueAnimator.ofArgb(Color.TRANSPARENT, highlightPaint.color).apply {
-            addUpdateListener { highlightPaint.color = it.animatedValue as Int }
+        val anim2 = ValueAnimator.ofInt(0, DEFAULT_HIGHLIGHT_BACKGROUND_ALPHA).apply {
+            addUpdateListener { highlightPaint.color = (it.animatedValue as Int shl 24) or (highlightColor and 0x00FFFFFF) }
         }
 
-        val anim3 = ValueAnimator.ofArgb(Color.TRANSPARENT, highlightStrokePaint.color).apply {
-            addUpdateListener { highlightStrokePaint.color = it.animatedValue as Int }
+        val anim3 = ValueAnimator.ofInt(0, 0xFF).apply {
+            addUpdateListener { highlightStrokePaint.color = (it.animatedValue as Int shl 24) or (highlightColor and 0x00FFFFFF) }
         }
 
-        val anim4 = ValueAnimator.ofArgb(Color.TRANSPARENT, 0xBFFFFFFF.toInt()).apply {
-            addUpdateListener { editEventDimPaint.color = it.animatedValue as Int; invalidate() }
+        val anim4 = ValueAnimator.ofInt(0, 0xBF).apply {
+            addUpdateListener {
+                val color = (it.animatedValue as Int shl 24) or (0xFFFFFFF and 0x00FFFFFF)
+
+                editEventDimPaint.color = color
+                invalidate()
+            }
         }
 
         val animSet = AnimatorSet().apply {
