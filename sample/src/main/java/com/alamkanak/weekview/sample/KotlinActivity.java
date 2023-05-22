@@ -33,6 +33,7 @@ public class KotlinActivity extends AppCompatActivity {
         setContentView(R.layout.activity_kotlin);
 
         WeekView view = ((WeekView) findViewById(R.id.weekView));
+
         view.setOnWeekChangeListener(new WeekView.OnWeekViewListener() {
             @Override
             public void onErrorEventListener(@Nullable Throwable e) {

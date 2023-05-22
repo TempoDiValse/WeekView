@@ -10,7 +10,6 @@
         android:id="@+id/weekView"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        app:editEventText="대면결재"
         app:timelineAllDayTextColor="#111111"
         app:lineAllDayColor="#1a3c3c43" />
 </LinearLayout>

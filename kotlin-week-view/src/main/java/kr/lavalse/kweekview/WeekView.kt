@@ -19,23 +19,23 @@ import kr.lavalse.kweekview.extension.EContext.toDP
 import kr.lavalse.kweekview.extension.EContext.toSP
 import kr.lavalse.kweekview.extension.ELocalDateTime.isBeforeDay
 import kr.lavalse.kweekview.extension.ELocalDateTime.isSameDay
-import kr.lavalse.kweekview.extension.ELocalDateTime.isSameWeek
 import kr.lavalse.kweekview.extension.ELocalDateTime.toLocalDateTime
-import kr.lavalse.kweekview.extension.ELocalDateTime.withTime
 import kr.lavalse.kweekview.extension.ELocalDateTime.toMinuteOfHours
 import kr.lavalse.kweekview.extension.ELocalDateTime.toText
 import kr.lavalse.kweekview.extension.ELocalDateTime.toTimeMillis
 import kr.lavalse.kweekview.extension.ELocalDateTime.weekOfYear
 import kr.lavalse.kweekview.extension.ELocalDateTime.withDayOfWeek
+import kr.lavalse.kweekview.extension.ELocalDateTime.withTime
 import kr.lavalse.kweekview.model.DummyWeekEvent
 import kr.lavalse.kweekview.model.WeekEvent
 import kr.lavalse.kweekview.model.WeekRect
-import java.lang.Float.min
-import java.time.*
+import java.time.DayOfWeek
+import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.YearMonth
 import java.util.*
 import kotlin.math.abs
 import kotlin.math.ceil
-import kotlin.math.roundToInt
 
 class WeekView @JvmOverloads constructor(
     context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
@@ -159,7 +159,7 @@ class WeekView @JvmOverloads constructor(
 
     private var pastEventColor = Color.WHITE
 
-    private var editEventText = ""
+    private var editEventText : String = ""
     private var editEventColor = Color.WHITE
     private var editEventStrokeColor = Color.WHITE
     private var editEventStrokeWidth = 0f
@@ -219,7 +219,6 @@ class WeekView @JvmOverloads constructor(
     private var dayOfWeekTodayBackgroundSize = 0
     private var dayOfWeekTodayBackgroundColor = 0
 
-
     private var dayOfWeekSundayTextColor = 0
     private var dayOfWeekSaturdayTextColor = 0
     private val dayOfWeekTextPaint : Paint = getDefaultDayOfWeekPaint()
@@ -266,6 +265,7 @@ class WeekView @JvmOverloads constructor(
     /** 현재일 이전 데이터로 이동이 필요한 경우, true 설정 하도록 한다. */
     private var canMovePastDate = false
     private var canEditLongClick = false
+    private var needTimeNow = false
 
     private var listener : OnWeekViewListener? = null
 
@@ -581,6 +581,8 @@ class WeekView @JvmOverloads constructor(
             highlightStrokeWidth = getDimension(R.styleable.WeekView_highlightStrokeWidth,
                 context.toDP(DEFAULT_HIGHLIGHT_STROKE_WIDTH))
 
+            needTimeNow = getBoolean(R.styleable.WeekView_needTimeNow, needTimeNow)
+
             recycle()
         }
 
@@ -669,7 +671,7 @@ class WeekView @JvmOverloads constructor(
         if(!didAttach){
             current = today
 
-            loadSchedules(current, true)
+            loadSchedules(current)
 
             didAttach = true
         }
@@ -682,10 +684,7 @@ class WeekView @JvmOverloads constructor(
         animator = null
     }
 
-    private fun loadSchedules(weekDate: LocalDateTime, force: Boolean = false){
-        val isSameWeek = current.isSameWeek(weekDate)
-        if(isSameWeek && !force) return
-
+    private fun loadSchedules(weekDate: LocalDateTime){
         clearAllRect()
 
         val schedules = mutableListOf<WeekEvent>()
@@ -753,7 +752,7 @@ class WeekView @JvmOverloads constructor(
         origin.y = if(y < 0) origin.y.coerceAtLeast(y) else 0f
 
         // 하루 단위의 셀 넓이를 계산한다.
-        widthPerDay = (width - timelineWidth - lineStrokeWidth) / visibleDays * 1f
+        widthPerDay = (width - timelineWidth) / visibleDays * 1f
 
         // 기존 소스가 index 를 통해서 일자를 표시 했음.
         // 스크롤을 통해서 이동하게 되면 index 숫자가, 다음 날은 1 / 이전 날은 -1 로 이동하면서 맨 왼쪽 시작일을 표시했다
@@ -763,6 +762,8 @@ class WeekView @JvmOverloads constructor(
 
         val standard = LocalDateTime.now()
 
+        // 좌측 시간표시(Timeline)와 스케쥴 테이블(Grid)은 일자마다 그릴 필요가 없고
+        // 먼저 그려져야 되는 기능이다
         drawTimeline(canvas)
         drawGrid(canvas)
 
@@ -773,10 +774,10 @@ class WeekView @JvmOverloads constructor(
             drawDayOfWeek(canvas, date, offsetX, dt)
             drawAllDayEvent(canvas, date, offsetX, dt)
             drawCommonEvent(canvas, date, offsetX, dt)
+            drawTimeNow(canvas, offsetX, dt)
 
-            if(index == firstVisibleIndex + 1){
+            if(index == firstVisibleIndex + 1)
                 firstVisibleDate = date
-            }
 
             offsetX += widthPerDay
         }
@@ -1043,9 +1044,11 @@ class WeekView @JvmOverloads constructor(
 
     private fun drawGrid(canvas: Canvas?){
         canvas?.run {
+            // 종일 스케쥴의 선도 함께 그려준다.
+            // 스케쥴의 선을 그렸으면 Header 의 높이를 잴 때 함께 선의 Stroke Width 도 포함시켜야 한다.
             save()
-            //clipRect(timelineWidth, dayOfWeekHeight, width, height)
 
+            // 한번에 두줄을 그리기 위해서 FloatArray 를 사용한다
             val lines = FloatArray(2 * 4)
 
             for(i in 0 until 2){
@@ -1069,9 +1072,7 @@ class WeekView @JvmOverloads constructor(
 
             linePaint.color = lineColor
             val offsetY = headerHeight + origin.y
-            for(i in 1 until 24){
-                drawLineWithHour(this, i, offsetY)
-            }
+            (1 until 24).forEach{ drawLineWithHour(this, it, offsetY) }
 
             restore()
         }
@@ -1103,7 +1104,6 @@ class WeekView @JvmOverloads constructor(
                 DayOfWeek.SATURDAY -> dayOfWeekSaturdayTextPaint
                 else -> dayOfWeekTextPaint
             }
-            
             val textNumberPaint = if(dayType == DayType.TODAY) dayOfWeekTodayTextPaint else dayOfWeekTextNumberPaint
 
             if(dayType == DayType.TODAY){
@@ -1127,19 +1127,6 @@ class WeekView @JvmOverloads constructor(
 
             drawEmptyRect(this, offsetX)
             drawCommonRect(this, date, offsetX, type)
-
-            /*
-            val left = offsetX.coerceAtLeast(timelineWidth.toFloat())
-            val top = headerHeight
-
-            // 현재 날의 시간 위치를 수평선으로 보여 준다.
-            if(type == DayType.TODAY){
-                val barOffset = top + origin.y
-                val beforeNow = today.run { (hour + (minute / 60f)) * hourHeight }
-
-                drawLine(left, barOffset + beforeNow, offsetX + widthPerDay, barOffset + beforeNow, timeNowPaint)
-            }
-            */
 
             restore()
         }
@@ -1396,6 +1383,26 @@ class WeekView @JvmOverloads constructor(
         }
     }
 
+    private fun drawTimeNow(canvas: Canvas?, offsetX: Float, dayType: Int){
+        if(!(needTimeNow && dayType == DayType.TODAY)) return
+
+        val left = offsetX.coerceAtLeast(timelineWidth.toFloat())
+        val top = headerHeight
+
+        // 현재 날의 시간 위치를 수평선으로 보여 준다.
+        val barOffset = top + origin.y
+        val beforeNow = today.run { (hour + (minute / 60f)) * hourHeight }
+
+        canvas?.run {
+            save()
+
+            clipRect(timelineWidth, top, width, height)
+            drawLine(left, barOffset + beforeNow, offsetX + widthPerDay, barOffset + beforeNow, timeNowPaint)
+
+            restore()
+        }
+    }
+
     /**
      * #DCDCDC 보다 밝은 경우에는 다른 색을 표시할 수 있도록 한다.
      * @param color 비교할 컬러 값
@@ -1484,7 +1491,7 @@ class WeekView @JvmOverloads constructor(
                 // 이벤트에 맞게 데이터를 다시 호출할 수 있도록 한다.
                 when(statePageMove){
                     PageMove.TODAY -> loadSchedules(today)
-                    PageMove.PREV_MONTH, PageMove.NEXT_MONTH, PageMove.WHERE -> loadSchedules(current, true)
+                    PageMove.PREV_MONTH, PageMove.NEXT_MONTH, PageMove.WHERE -> loadSchedules(current)
                 }
 
                 statePageMove = PageMove.NONE
@@ -1668,9 +1675,9 @@ class WeekView @JvmOverloads constructor(
         if(doScrolling() || statePageMove != PageMove.NONE) return
 
         statePageMove = PageMove.NEXT_MONTH
-        current = current.plusWeeks(1)
+        val date = current.plusWeeks(1)
 
-        moveTo(current.toLocalDate())
+        moveTo(date.toLocalDate())
     }
 
     /**
@@ -1681,9 +1688,9 @@ class WeekView @JvmOverloads constructor(
         if(!canMovePastDate && firstVisibleDate.isSameDay(today)) return
 
         statePageMove = PageMove.PREV_MONTH
-        current = current.minusWeeks(1)
+        val date = current.minusWeeks(1)
 
-        moveTo(current.toLocalDate())
+        moveTo(date.toLocalDate())
     }
 
     /**
@@ -1704,17 +1711,10 @@ class WeekView @JvmOverloads constructor(
      */
     fun moveTo(date: LocalDate){
         if(statePageMove == PageMove.NONE){
-            current = date.toLocalDateTime()
-
             statePageMove = PageMove.WHERE
         }
 
-        val fdow = firstVisibleDate.toLocalDate()
-        val diff = date.toEpochDay() - fdow.toEpochDay()
-
-        val offset = diff * widthPerDay
-
-        scrollOriginTo(-offset.toInt(), 0)
+        scrollToDate(date)
     }
 
     /**
@@ -1842,6 +1842,49 @@ class WeekView @JvmOverloads constructor(
      */
     fun getCurrentDate() = current.run { listOf(year, monthValue, weekOfYear()) }
 
+    /**
+     * 편집 모드일 때의 임시 이벤트명을 설정한다
+     *
+     * @param str 임시 이벤트 명
+     */
+    fun setEditEventText(str: String){
+        editEventText = str
+
+        if(isDrawn) invalidate()
+    }
+
+    /**
+     * 편집 모드일 때의 임시 이벤트명을 설정한다
+     *
+     * @param res 임시 이벤트 명 리소스
+     */
+    fun setEditEventText(res: Int){ setEditEventText(resources.getString(res)) }
+
+    /**
+     * 타임라인의 왼쪽 패딩을 넣어준다. 단 패딩은 타임라인의 시간 글자 영역을 밀어내며, 수평으로 그어진 선은 밀어내지 않는다.
+     * @param padding 패딩 값
+     */
+    fun setTimelineLeftPadding(padding: Int){ setTimelinePadding(padding, timelinePadding.right) }
+
+    /**
+     * 타임라인의 오른쪽 패딩을 넣어준다
+     * @param padding 패딩 값
+     */
+    fun setTimelineRightPadding(padding: Int){ setTimelinePadding(timelinePadding.right, padding) }
+
+    /**
+     * 타임라인의 양 옆 패딩을 넣어준다. 단, 왼쪽 패딩은 타임라인의 시간 글자 영역을 밀어내며, 수평으로 그어진 선은 밀어내지 않는다.
+     *
+     * @param left 왼쪽 패딩
+     * @param right 오른쪽 패딩
+     */
+    fun setTimelinePadding(leftPx: Int, rightPx: Int){
+        timelinePadding.left = context.toDP(leftPx).toInt()
+        timelinePadding.right = context.toDP(rightPx).toInt()
+
+        if(isDrawn) invalidate()
+    }
+
     private fun prepareScheduleInternal(start: LocalDateTime, end: LocalDateTime){
         isEditMode = true
 
@@ -1864,28 +1907,29 @@ class WeekView @JvmOverloads constructor(
     private fun adjustScheduleStartOrEnd(ldt: LocalDateTime, isStartOrEnd: Boolean)
             = ldt.run { withTime(if(isStartOrEnd) hour else hour + 1, 0, 0) }
 
+    private fun changeAlphaColor(alpha: Int, color: Int) = (alpha shl 24) or (color and 0x00FFFFFF)
+
     private fun animatorHighlight() : Animator {
         val anim1 = ValueAnimator.ofInt(0, 0xFF).apply {
             addUpdateListener {
-                val color = (it.animatedValue as Int shl 24) or (editEventColor and 0x00FFFFFF)
+                val color = changeAlphaColor(it.animatedValue as Int, editEventColor)
 
                 editEvent!!.setBackgroundColor(color)
             }
         }
 
         val anim2 = ValueAnimator.ofInt(0, DEFAULT_HIGHLIGHT_BACKGROUND_ALPHA).apply {
-            addUpdateListener { highlightPaint.color = (it.animatedValue as Int shl 24) or (highlightColor and 0x00FFFFFF) }
+            addUpdateListener { highlightPaint.color = changeAlphaColor(it.animatedValue as Int, highlightColor) }
         }
 
         val anim3 = ValueAnimator.ofInt(0, 0xFF).apply {
-            addUpdateListener { highlightStrokePaint.color = (it.animatedValue as Int shl 24) or (highlightColor and 0x00FFFFFF) }
+            addUpdateListener { highlightStrokePaint.color = changeAlphaColor(it.animatedValue as Int, highlightColor) }
         }
 
         val anim4 = ValueAnimator.ofInt(0, DEFAULT_EDIT_EVENT_DIM_ALPHA).apply {
             addUpdateListener {
-                val color = (it.animatedValue as Int shl 24) or (0xFFFFFFF and 0x00FFFFFF)
+                editEventDimPaint.color = changeAlphaColor(it.animatedValue as Int, 0xFFFFFFFF.toInt())
 
-                editEventDimPaint.color = color
                 invalidate()
             }
         }

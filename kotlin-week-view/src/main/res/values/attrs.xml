@@ -54,6 +54,9 @@
         <attr name="timelineAllDayEventText" format="string"></attr>
         <attr name="timelineAllDayEventTextSize" format="dimension"></attr>
 
+        <!-- Time Now -->
+        <attr name="needTimeNow" format="boolean"></attr>
+
         <!-- Allday -->
         <attr name="allDayAreaHeight" format="dimension"></attr>
 
