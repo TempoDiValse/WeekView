@@ -30,11 +30,11 @@ import kr.lavalse.kweekview.extension.ELocalDateTime.withDayOfWeek
 import kr.lavalse.kweekview.model.DummyWeekEvent
 import kr.lavalse.kweekview.model.WeekEvent
 import kr.lavalse.kweekview.model.WeekRect
+import java.lang.Float.min
 import java.time.*
 import java.util.*
 import kotlin.math.abs
 import kotlin.math.ceil
-import kotlin.math.floor
 import kotlin.math.roundToInt
 
 class WeekView @JvmOverloads constructor(
@@ -92,7 +92,7 @@ class WeekView @JvmOverloads constructor(
         private const val DEFAULT_EVENT_TEXT_COLOR = 0xFF111111
         private const val DEFAULT_EVENT_TEXT_MAX_LINES = 2f
 
-        private const val DEFAULT_EDIT_EVENT_DIM = 0xBFFFFFFF
+        private const val DEFAULT_EDIT_EVENT_DIM_ALPHA = 0xBF
         private const val DEFAULT_EDIT_EVENT_STROKE_WIDTH = 1f
         private const val DEFAULT_EDIT_EVENT_STROKE_COLOR = 0xFFFFFFFF
         private const val DEFAULT_EDIT_EVENT_SHADOW_COLOR = 0x4D000000
@@ -174,7 +174,7 @@ class WeekView @JvmOverloads constructor(
     private var lineStrokeWidth = 0f
     private val linePaint : Paint = Paint()
 
-    private var widthPerDay: Int = 0
+    private var widthPerDay: Float = 0f
     private var visibleDays: Int = DEFAULT_VISIBLE_DAYS
 
     private var textSize = 0
@@ -182,11 +182,12 @@ class WeekView @JvmOverloads constructor(
     private var eventTextSize = 0
     private var eventTextPaint = TextPaint(Paint.ANTI_ALIAS_FLAG)
 
-    private var timelineTextSize = 0
+    private var timelineTextSize = 0f
     private var timelineTextColor = Color.BLACK
     private var timelineAllDayTextColor = Color.BLACK
     private val timelineWidth
         get() =  timelinePadding.left + timelineTextWidth + timelinePadding.right
+
     private var hourHeight = 0
     private var hourMinHeight = 0
     private var hourMaxHeight = 0
@@ -194,6 +195,7 @@ class WeekView @JvmOverloads constructor(
     private var timelineTextHeight = 0
     private var timelinePadding = Rect()
     private val timelineTextPaint : Paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        typeface = Typeface.DEFAULT
         textAlign = Paint.Align.RIGHT
     }
 
@@ -445,6 +447,8 @@ class WeekView @JvmOverloads constructor(
                 return
             }
 
+            if(e.x < timelineWidth) return
+
             val (start, end) = getTimeFromPoint(e.x, e.y).run {
                 adjustScheduleStartOrEnd(this, true) to adjustScheduleStartOrEnd(this, false)
             }
@@ -463,8 +467,10 @@ class WeekView @JvmOverloads constructor(
     private var isZooming = false
     private val scaleDetector = ScaleGestureDetector(context, object : ScaleGestureDetector.OnScaleGestureListener {
         override fun onScale(detector: ScaleGestureDetector): Boolean {
-            hourHeight = (hourHeight * detector.scaleFactor).roundToInt()
-            hourHeight = hourHeight.coerceIn(hourMinHeight, hourMaxHeight)
+            val minHeightOnScreen = kotlin.math.max(ceil((height - headerHeight) / 24f).toInt(), hourMinHeight)
+            val mH = (hourHeight * detector.scaleFactor).toInt().coerceIn(minHeightOnScreen, hourMaxHeight)
+
+            hourHeight = mH
 
             invalidate()
 
@@ -515,12 +521,14 @@ class WeekView @JvmOverloads constructor(
             // Timeline
             hourHeight = getDimensionPixelSize(R.styleable.WeekView_hourHeight,
                 context.toDP(DEFAULT_HOUR_HEIGHT).toInt())
+
             hourMinHeight = getDimensionPixelSize(R.styleable.WeekView_hourMinHeight,
                 context.toDP(DEFAULT_HOUR_HEIGHT_MIN).toInt())
             hourMaxHeight = getDimensionPixelSize(R.styleable.WeekView_hourMaxHeight,
                 context.toDP(DEFAULT_HOUR_HEIGHT_MAX).toInt())
-            timelineTextSize = getDimensionPixelSize(R.styleable.WeekView_timelineTextSize,
-                context.toDP(DEFAULT_TIMELINE_TEXT_SIZE).toInt())
+
+            timelineTextSize = getDimension(R.styleable.WeekView_timelineTextSize,
+                context.toDP(DEFAULT_TIMELINE_TEXT_SIZE))
             timelineTextColor = getColor(R.styleable.WeekView_timelineTextColor, DEFAULT_TIMELINE_TEXT_COLOR.toInt())
             timelinePadding.left = getDimensionPixelSize(R.styleable.WeekView_timelineLeftPadding,
                 context.toDP(DEFAULT_TIMELINE_LEFT_PADDING).toInt())
@@ -637,13 +645,13 @@ class WeekView @JvmOverloads constructor(
             p.color = highlightColor
         }
         highlightEmphasisTimelineTextPaint.let { p ->
-            p.textSize = timelineTextSize.toFloat()
+            p.textSize = timelineTextSize
             p.typeface = Typeface.DEFAULT_BOLD
             p.color = highlightColor
         }
 
         timelineTextPaint.let { p ->
-            p.textSize = timelineTextSize.toFloat()
+            p.textSize = timelineTextSize
             p.color = timelineTextColor
         }
 
@@ -741,10 +749,11 @@ class WeekView @JvmOverloads constructor(
         super.onDraw(canvas)
 
         // 스크롤을 할 수 있는 최대/최소치를 정해준다
-        origin.y = origin.y.coerceIn(height - (hourHeight * 24) - headerHeight.toFloat(), 0f)
+        val y = height - (hourHeight * 24f) - headerHeight
+        origin.y = if(y < 0) origin.y.coerceAtLeast(y) else 0f
 
         // 하루 단위의 셀 넓이를 계산한다.
-        widthPerDay = (width - timelineWidth - visibleDays - 1) / visibleDays
+        widthPerDay = (width - timelineWidth - lineStrokeWidth) / visibleDays * 1f
 
         // 기존 소스가 index 를 통해서 일자를 표시 했음.
         // 스크롤을 통해서 이동하게 되면 index 숫자가, 다음 날은 1 / 이전 날은 -1 로 이동하면서 맨 왼쪽 시작일을 표시했다
@@ -1522,7 +1531,7 @@ class WeekView @JvmOverloads constructor(
         if(diffX > PageMove.DISTANCE_TO_MOVE){
             val days = (origin.x / widthPerDay).run {
                 when {
-                    currentScrollDirection == Scroll.LEFT -> floor(this)
+                    currentScrollDirection == Scroll.LEFT -> kotlin.math.floor(this)
                     currentScrollDirection == Scroll.RIGHT -> ceil(this)
                     currentFlingDirection != Scroll.NONE -> kotlin.math.round(this)
                     else -> kotlin.math.round(this)
@@ -1833,16 +1842,6 @@ class WeekView @JvmOverloads constructor(
      */
     fun getCurrentDate() = current.run { listOf(year, monthValue, weekOfYear()) }
 
-    fun setDayOfWeekPadding(top: Int = dayOfWeekPadding.top, bottom: Int = dayOfWeekPadding.bottom){
-        dayOfWeekPadding.top = context.toDP(top).toInt()
-        dayOfWeekPadding.bottom = context.toDP(bottom).toInt()
-    }
-
-    fun setTimelinePadding(left: Int = timelinePadding.left, right: Int = timelinePadding.right){
-        timelinePadding.left = left
-        timelinePadding.right = right
-    }
-
     private fun prepareScheduleInternal(start: LocalDateTime, end: LocalDateTime){
         isEditMode = true
 
@@ -1882,7 +1881,7 @@ class WeekView @JvmOverloads constructor(
             addUpdateListener { highlightStrokePaint.color = (it.animatedValue as Int shl 24) or (highlightColor and 0x00FFFFFF) }
         }
 
-        val anim4 = ValueAnimator.ofInt(0, 0xBF).apply {
+        val anim4 = ValueAnimator.ofInt(0, DEFAULT_EDIT_EVENT_DIM_ALPHA).apply {
             addUpdateListener {
                 val color = (it.animatedValue as Int shl 24) or (0xFFFFFFF and 0x00FFFFFF)
 
