@@ -12,6 +12,7 @@
         android:layout_height="match_parent"
         app:timelineAllDayTextColor="#111111"
         app:lineAllDayColor="#1a3c3c43"
-        app:timelineLeftPadding="50dp" />
+        app:timelineLeftPadding="50dp"
+        app:editEventText="대면결재" />
 
 </LinearLayout>

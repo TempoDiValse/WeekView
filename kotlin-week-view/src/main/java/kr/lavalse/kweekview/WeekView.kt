@@ -92,7 +92,7 @@ class WeekView @JvmOverloads constructor(
         private const val DEFAULT_EVENT_TEXT_HORIZONTAL_PADDING = 6f
         private const val DEFAULT_EVENT_TEXT_VERTICAL_PADDING = 8f
         private const val DEFAULT_EVENT_TEXT_COLOR = 0xFF111111
-        private const val DEFAULT_EVENT_TEXT_MAX_LINES = 2f
+        private const val DEFAULT_EVENT_TEXT_MAX_LINES = 2
 
         private const val DEFAULT_EDIT_EVENT_DIM_ALPHA = 0xBF
         private const val DEFAULT_EDIT_EVENT_STROKE_WIDTH = 1f
@@ -1025,23 +1025,21 @@ class WeekView @JvmOverloads constructor(
 
     private fun drawTimeline(canvas: Canvas?){
         canvas?.run {
-            timelineTextPaint.color = timelineAllDayTextColor
+            save()
+            clipRect(0f, headerHeight * 1f, timelineWidth * 1f, height * 1f)
 
+            val date = today.withTime(0)
+            (0 until 24).forEach { drawTimelineText(this, date.withHour(it)) }
+
+            restore()
+
+            // 일반 시간 텍스트를 먼저 그려준 다음 [종일] 부분의 텍스트를 그려준다
+            timelineTextPaint.color = timelineAllDayTextColor
             save()
             drawText(timelineAllDayEventText,
                 timelineWidth - timelinePadding.right - timelineAllDayTextWidth * 1f,
                 dayOfWeekHeight + (allDayAreaHeight / 2) + (timelineTextHeight / 2f),
                 timelineTextPaint)
-
-            restore()
-
-            timelineTextPaint.color = timelineTextColor
-            save()
-
-            clipRect(0f, headerHeight * 1f, timelineWidth * 1f, height * 1f)
-
-            val date = today.withTime(0)
-            (0 until 24).forEach { drawTimelineText(this, date.withHour(it)) }
 
             restore()
         }
@@ -1227,19 +1225,13 @@ class WeekView @JvmOverloads constructor(
 
         if(availHeight < lineHeight) return
 
-        var availLineCount = (availHeight / lineHeight).coerceAtMost(DEFAULT_EVENT_TEXT_MAX_LINES)
+        sl = StaticLayout.Builder.obtain(sb, 0, sb.length, eventTextPaint, availWidth.toInt()).apply {
+            setAlignment(alignment)
 
-        do {
-            sl = StaticLayout(
-                TextUtils.ellipsize(sb, eventTextPaint, availLineCount * availWidth, TextUtils.TruncateAt.END),
-                eventTextPaint,
-                availWidth.toInt(),
-                alignment,
-                1f, 0f, false
-            )
-
-            availLineCount--
-        } while (sl.height > availHeight)
+            setEllipsize(TextUtils.TruncateAt.END)
+            setEllipsizedWidth(availWidth.toInt())
+            setMaxLines(DEFAULT_EVENT_TEXT_MAX_LINES)
+        }.build()
 
         canvas?.run {
             save()
@@ -1340,7 +1332,7 @@ class WeekView @JvmOverloads constructor(
 
                     save()
 
-                    clipRect(timelineWidth * 1f, 0f, width * 1f, height * 1f)
+                    clipRect(timelineWidth, 0, width, height)
                     // 하이라이트 & 딤을 해주면 일자와 시간이 전부 알파처리되기 떄문에
                     drawRoundRect(highlightRect, eventCornerRadius, eventCornerRadius, highlightPaint)
                     drawRoundRect(highlightRect, eventCornerRadius, eventCornerRadius, highlightStrokePaint)
@@ -1348,6 +1340,7 @@ class WeekView @JvmOverloads constructor(
                     restore()
 
                     save()
+                    clipRect(0, headerHeight , width, height)
 
                     // 그 위로 새로 덧그려준다
                     val startAt = rect.originalEvent.startAt!!
@@ -1360,7 +1353,7 @@ class WeekView @JvmOverloads constructor(
                     restore()
 
                     save()
-                    clipRect(timelineWidth * 1f, 0f, width * 1f, height * 1f)
+                    clipRect(timelineWidth, headerHeight, width, height)
 
                     if(l < r
                         && l < width && t < height
