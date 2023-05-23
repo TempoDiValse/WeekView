@@ -1634,9 +1634,7 @@ class WeekView @JvmOverloads constructor(
     /**
      * 현재 시각으로 스크롤을 이동하도록 한다.
      */
-    fun scrollToCurrentTime() {
-        scrollToTime(LocalDateTime.now().hour)
-    }
+    fun scrollToCurrentTime() { scrollToTime(LocalDateTime.now().hour) }
 
     /**
      * 해당 시각으로 스크롤을 이동하도록 한다. 해당 메소드를 사용하지 않으면 00시부터 데이터가 디스플레이 된다.
@@ -1646,6 +1644,7 @@ class WeekView @JvmOverloads constructor(
      */
     fun scrollToTime(hour: Int, smoothScroll: Boolean = true){
         val y = (hourHeight * hour) + (lineStrokeWidth * 2)
+
         if(!isDrawn){
             val offset = y - height
 
