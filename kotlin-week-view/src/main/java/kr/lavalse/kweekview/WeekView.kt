@@ -196,7 +196,7 @@ class WeekView @JvmOverloads constructor(
     private var timelineTextWidth = 0
     private var timelineTextHeight = 0
     private var timelinePadding = Rect()
-    private val timelineTextPaint : Paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+    private val timelineTextPaint : TextPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
         typeface = Typeface.DEFAULT
         textAlign = Paint.Align.RIGHT
     }
@@ -1025,7 +1025,19 @@ class WeekView @JvmOverloads constructor(
 
     private fun drawTimeline(canvas: Canvas?){
         canvas?.run {
+            timelineTextPaint.color = timelineAllDayTextColor
+
             save()
+            drawText(timelineAllDayEventText,
+                timelineWidth - timelinePadding.right - timelineAllDayTextWidth * 1f,
+                dayOfWeekHeight + (allDayAreaHeight / 2) + (timelineTextHeight / 2f),
+                timelineTextPaint)
+
+            restore()
+
+            timelineTextPaint.color = timelineTextColor
+            save()
+
             clipRect(0f, headerHeight * 1f, timelineWidth * 1f, height * 1f)
 
             val date = today.withTime(0)
@@ -1253,23 +1265,6 @@ class WeekView @JvmOverloads constructor(
     }
 
     private fun drawAllDayEvent(canvas: Canvas?, date: LocalDateTime, offsetX: Float, type: Int){
-        canvas?.run {
-            save()
-
-            timelineTextPaint.color = timelineAllDayTextColor
-
-            drawText(timelineAllDayEventText,
-                timelineWidth - timelinePadding.right - timelineAllDayTextWidth * 1f,
-                dayOfWeekHeight + (allDayAreaHeight / 2) + (timelineTextHeight / 2f),
-                timelineTextPaint)
-
-            drawAllDayRect(this, date, offsetX, type)
-
-            restore()
-        }
-    }
-
-    private fun drawAllDayRect(canvas: Canvas?, date: LocalDateTime, offsetX: Float, type: Int){
         if(rects.isEmpty()) return
 
         canvas?.run {
@@ -1281,8 +1276,7 @@ class WeekView @JvmOverloads constructor(
                 if(!date.isSameDay(rect.startAt) || !rect.event.isAllDay()) continue
 
                 val (l, t) = offsetX to dayOfWeekHeight + lineStrokeWidth * 1f
-                val r = l + widthPerDay
-                val b = t + allDayAreaHeight
+                val (r, b) = l + widthPerDay to t + allDayAreaHeight
 
                 rect.setAbsoluteRect(l, t, r, b, eventBlockPadding)
 
