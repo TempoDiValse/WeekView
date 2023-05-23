@@ -3,6 +3,16 @@
     <declare-styleable name="WeekView">
         <attr name="android:textSize"></attr>
         <attr name="canMovePastDate" format="boolean"></attr>
+        <attr name="startDayOfWeek" format="enum">
+            <enum name="today" value="-1" />
+            <enum name="monday" value="0" />
+            <enum name="tuesday" value="1" />
+            <enum name="wednesday" value="2" />
+            <enum name="thursday" value="3" />
+            <enum name="friday" value="4" />
+            <enum name="saturday" value="5" />
+            <enum name="sunday" value="6" />
+        </attr>
 
         <!-- Event -->
         <attr name="eventTextHorizontalPadding" format="dimension"></attr>

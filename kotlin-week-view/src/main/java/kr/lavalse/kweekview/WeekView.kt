@@ -18,6 +18,7 @@ import kr.lavalse.kweekview.exception.*
 import kr.lavalse.kweekview.extension.EContext.toDP
 import kr.lavalse.kweekview.extension.EContext.toSP
 import kr.lavalse.kweekview.extension.ELocalDateTime.isBeforeDay
+import kr.lavalse.kweekview.extension.ELocalDateTime.isBeforeWeek
 import kr.lavalse.kweekview.extension.ELocalDateTime.isSameDay
 import kr.lavalse.kweekview.extension.ELocalDateTime.toLocalDateTime
 import kr.lavalse.kweekview.extension.ELocalDateTime.toMinuteOfHours
@@ -44,6 +45,7 @@ class WeekView @JvmOverloads constructor(
         private const val DEFAULT_FORMAT_DAY_OF_WEEK = "d"
 
         private const val DEFAULT_VISIBLE_DAYS = 7
+        private const val DEFAULT_DAY_OF_WEEK_START = -1
         private const val DEFAULT_PRELOAD_WEEK_DATA_RANGE = 3
         private const val DEFAULT_FLING_MAX_LIMIT = 10000f
 
@@ -123,7 +125,6 @@ class WeekView @JvmOverloads constructor(
         const val VERTICAL = 3
 
         const val X_SPEED = .18f
-        const val X_AUTO_SCROLL_DURATION = 250
     }
 
     private object PageMove {
@@ -141,6 +142,7 @@ class WeekView @JvmOverloads constructor(
     private val today = LocalDateTime.now()
     private var current : LocalDateTime = today
     private var firstVisibleDate: LocalDateTime = today
+    private var startDayOfWeek = -1
 
     private val rects: MutableList<WeekRect> = mutableListOf()
 
@@ -238,7 +240,8 @@ class WeekView @JvmOverloads constructor(
     private var todayBackgroundColor = 0
     private var todayBackgroundPaint = Paint()
 
-    private val headerHeight get() = (dayOfWeekHeight + allDayAreaHeight + (lineStrokeWidth * 2)).toInt()
+    private val headerHeight
+        get() = (dayOfWeekHeight + allDayAreaHeight + (lineStrokeWidth * 2)).toInt()
 
     private val highlightRect = RectF()
     private var highlightColor = Color.WHITE
@@ -498,6 +501,7 @@ class WeekView @JvmOverloads constructor(
             textSize = getDimensionPixelSize(R.styleable.WeekView_android_textSize,
                 context.toSP(DEFAULT_TEXT_SIZE).toInt())
             canMovePastDate = getBoolean(R.styleable.WeekView_canMovePastDate, canMovePastDate)
+            startDayOfWeek = getInt(R.styleable.WeekView_startDayOfWeek, DEFAULT_DAY_OF_WEEK_START)
 
             // dayOfWeek
             dayOfWeekPadding.top = getDimensionPixelSize(R.styleable.WeekView_dayOfWeekTopPadding,
@@ -669,11 +673,9 @@ class WeekView @JvmOverloads constructor(
         super.onAttachedToWindow()
 
         if(!didAttach){
-            current = today
+            didAttach = true
 
             loadSchedules(current)
-
-            didAttach = true
         }
     }
 
@@ -760,7 +762,9 @@ class WeekView @JvmOverloads constructor(
         val startX = timelineWidth + origin.x + (widthPerDay * firstVisibleIndex)
         var offsetX = startX
 
-        val standard = LocalDateTime.now()
+        var standard = LocalDateTime.now()
+        if(startDayOfWeek != DEFAULT_DAY_OF_WEEK_START)
+            standard = standard.withDayOfWeek(DayOfWeek.of(startDayOfWeek + 1))
 
         // 좌측 시간표시(Timeline)와 스케쥴 테이블(Grid)은 일자마다 그릴 필요가 없고
         // 먼저 그려져야 되는 기능이다
@@ -1664,9 +1668,7 @@ class WeekView @JvmOverloads constructor(
      *
      * @param hour 0~23 까지의 시간
      */
-    fun scrollToTime(hour: Int){
-        scrollToTime(hour, false)
-    }
+    fun scrollToTime(hour: Int){ scrollToTime(hour, false) }
 
     /**
      * 다음 주로 이동하도록 한다.
@@ -1685,7 +1687,7 @@ class WeekView @JvmOverloads constructor(
      */
     fun moveToPrev(){
         if(doScrolling() || statePageMove != PageMove.NONE) return
-        if(!canMovePastDate && firstVisibleDate.isSameDay(today)) return
+        if(!canMovePrevious()) return
 
         statePageMove = PageMove.PREV_MONTH
         val date = current.minusWeeks(1)
@@ -1720,7 +1722,8 @@ class WeekView @JvmOverloads constructor(
     /**
      * 이전 페이지로 넘어갈 수 있는 지 확인한다.
      */
-    fun canMovePrevious() = current.isBeforeDay(today)
+    fun canMovePrevious() : Boolean
+        = !canMovePastDate && !today.isBeforeWeek(current.minusWeeks(1))
 
     /**
      * 편집모드 하이라이트 사각형의 범위를 지정해준다
