@@ -3,23 +3,16 @@ package kr.lavalse.kweekview.model
 import android.graphics.Rect
 import android.graphics.RectF
 
-class WeekRect : RectF {
-    private var _event: WeekEvent
-    private var _origin: WeekEvent
+class WeekRect(left: Float, top: Float, right: Float, bottom: Float, event: WeekEvent)
+    : RectF(left, top, right, bottom) {
+
+    private var _event: WeekEvent = event
 
     private val absRect : RectF = RectF()
     val absoluteRect get() = absRect
 
-    constructor(left: Float, top: Float, right: Float, bottom: Float, event: WeekEvent, origin: WeekEvent): super(left, top, right, bottom){
-        this._event = event
-        this._origin = origin
-    }
-
-    constructor(left: Float, top: Float, right: Float, bottom: Float, event: WeekEvent)
-        : this(left, top, right, bottom, event, event)
-
     val event: WeekEvent get() = _event
-    val originalEvent: WeekEvent get() = _origin
+    val originalEvent: WeekEvent get() = _event.originalEvent
 
     val startAt get() = event.startAt!!
     val endAt get() = event.endAt!!

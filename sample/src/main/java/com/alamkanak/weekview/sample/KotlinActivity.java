@@ -419,13 +419,7 @@ public class KotlinActivity extends AppCompatActivity {
             case R.id.action_remove: {
                 WeekView view = (WeekView) findViewById(R.id.weekView);
 
-                if(selected == null){
-                    Toast.makeText(this, "Select a schedule to remove", Toast.LENGTH_SHORT).show();
-                }else{
-                    view.removeScheduleById(selected.getId());
-
-                    selected = null;
-                }
+                view.removeScheduleById("fasdfasdf");
             }
 
             break;
