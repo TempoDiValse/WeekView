@@ -21,6 +21,11 @@ open class WeekEvent: Cloneable {
     val difference get() = abs(endTimeInMillis - startTimeInMillis)
     val days get() = (difference / (24 * 60 * 60 * 1000f)).roundToInt()
 
+    private var _oEvent : WeekEvent? = null
+    var originalEvent : WeekEvent
+        get() = _oEvent ?: this
+        set(value) { _oEvent = value }
+
     open var title: String = ""
 
     private var isAllDay: Boolean = false
@@ -73,7 +78,7 @@ open class WeekEvent: Cloneable {
         val start = startAt?.toText("yyyy/MM/dd HH:mm") ?: "NULL"
         val end = endAt?.toText("yyyy/MM/dd HH:mm") ?: "NULL"
 
-        return if(!isAllDay()) "($id) $start ~ $end" else "($id-A) $start ~ $end"
+        return if(!isAllDay()) "\"($id) $start ~ $end \'$title\'\"" else "\"($id-A) $start ~ $end \'$title\'\""
     }
 
     public override fun clone(): WeekEvent

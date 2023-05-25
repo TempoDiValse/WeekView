@@ -38,6 +38,7 @@ object ELocalDateTime {
 
     fun LocalDate.isSameDay(with: LocalDate) = year == with.year && dayOfYear == with.dayOfYear
     fun LocalDate.withDayOfWeek(dayOfWeek: DayOfWeek) = with(TemporalAdjusters.previousOrSame(dayOfWeek))
+    fun LocalDate.weekOfYear() = get(WeekFields.of(Locale.getDefault()).weekOfWeekBasedYear())
     fun LocalDate.toLocalDateTime() : LocalDateTime
         = LocalDateTime.of(this, LocalTime.of(0, 0))
 }

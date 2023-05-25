@@ -30,7 +30,6 @@ public class KotlinActivity extends AppCompatActivity {
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
         setContentView(R.layout.activity_kotlin);
 
         WeekView view = ((WeekView) findViewById(R.id.weekView));
@@ -106,8 +105,8 @@ public class KotlinActivity extends AppCompatActivity {
 
                 startAt
                     = LocalDateTime.of(
-                            LocalDate.of(year, 5, 18),
-                            LocalTime.of(15, 20, 0));
+                            LocalDate.of(year, 5, 25),
+                            LocalTime.of(17, 20, 0));
                 //.with(TemporalAdjusters.nextOrSame(DayOfWeek.WEDNESDAY));
 
                 endAt = LocalDateTime.of(startAt.toLocalDate(), startAt.toLocalTime())
@@ -124,7 +123,7 @@ public class KotlinActivity extends AppCompatActivity {
 
                 startAt
                     = LocalDateTime.of(
-                        LocalDate.of(year, 5, 23),
+                        LocalDate.of(year, 5, 25),
                         LocalTime.of(14, 0, 0)
                     );
                         //.with(TemporalAdjusters.nextOrSame(DayOfWeek.WEDNESDAY));
@@ -232,22 +231,37 @@ public class KotlinActivity extends AppCompatActivity {
                 e9.setStartAndEndDate(startAt, endAt, false);
                 events.add(e9);
 
-                WeekEvent e10 = new WeekEvent("AF015"+date);
-                e10.setBackgroundColor("#00C979");
-                e10.setTitle("추가근무");
+                WeekEvent e11 = new WeekEvent("AF013"+date);
+                e11.setBackgroundColor("#004A2C");
+                e11.setTitle("이벤트 E(11:10 ~ 11:18)");
 
                 startAt
                         = LocalDateTime.of(
                         LocalDate.of(year, month, date),
-                        LocalTime.of(23, 0, 0)
-                ).with(TemporalAdjusters.nextOrSame(DayOfWeek.SATURDAY));
+                        LocalTime.of(11, 10, 0)
+                ).with(TemporalAdjusters.nextOrSame(DayOfWeek.THURSDAY));
 
                 endAt = LocalDateTime.of(startAt.toLocalDate(), startAt.toLocalTime())
-                        .plusMinutes(80);
+                        .plusMinutes(8);
 
-                e10.setStartAndEndDate(startAt, endAt, false);
-                events.add(e10);
+                e11.setStartAndEndDate(startAt, endAt, false);
+                events.add(e11);
 
+                WeekEvent e12 = new WeekEvent("AF013"+date);
+                e12.setBackgroundColor("#004A2C");
+                e12.setTitle("이벤트 E(11:40 ~ 11:48)");
+
+                startAt
+                        = LocalDateTime.of(
+                        LocalDate.of(year, month, date),
+                        LocalTime.of(11, 40, 0)
+                ).with(TemporalAdjusters.nextOrSame(DayOfWeek.THURSDAY));
+
+                endAt = LocalDateTime.of(startAt.toLocalDate(), startAt.toLocalTime())
+                        .plusMinutes(8);
+
+                e12.setStartAndEndDate(startAt, endAt, false);
+                events.add(e12);
 
                 // MON ~ WEDS
                 WeekEvent a1 = new WeekEvent("AF004"+date);
@@ -310,7 +324,7 @@ public class KotlinActivity extends AppCompatActivity {
                 endAt = LocalDateTime.of(startAt.toLocalDate(), startAt.toLocalTime())
                         .plusDays(4);
                 a5.setStartAndEndDate(startAt, endAt, true);
-                //events.add(a5);
+                events.add(a5);
 
                 return events;
 
