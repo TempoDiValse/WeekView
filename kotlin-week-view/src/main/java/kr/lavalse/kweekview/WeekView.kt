@@ -5,12 +5,14 @@ import android.animation.AnimatorSet
 import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.*
+import android.graphics.drawable.ColorDrawable
 import android.text.*
 import android.text.style.StyleSpan
 import android.util.AttributeSet
 import android.view.*
 import android.view.animation.DecelerateInterpolator
 import android.widget.OverScroller
+import android.widget.PopupWindow
 import androidx.core.view.GestureDetectorCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.postDelayed
@@ -304,21 +306,7 @@ class WeekView @JvmOverloads constructor(
                 return super.onSingleTapConfirmed(e)
             }
 
-            if(rects.isNotEmpty()){
-                //for(r in rects.reversed()){
-                for(r in rects){
-                    if(r.containsTouchPoint(e.x, e.y)){
-                        val event = r.originalEvent
-                        listener?.onWeekEventSelected(event)
-
-                        playSoundEffect(SoundEffectConstants.CLICK)
-
-                        return super.onSingleTapConfirmed(e)
-                    }
-                }
-            }
-
-            return super.onSingleTapConfirmed(e)
+            return onSelectEvent(e)
         }
 
         override fun onScroll(e1: MotionEvent, e2: MotionEvent, dx: Float, dy: Float): Boolean {
@@ -443,6 +431,31 @@ class WeekView @JvmOverloads constructor(
 
             if(canEditLongClick)
                 changeWithEditMode(e)
+            else{
+                onSelectEvent(e)
+            }
+        }
+
+        private fun onSelectEvent(e: MotionEvent) : Boolean {
+            if(rects.isEmpty()) return false
+
+            for(r in rects){
+                if(r.containsTouchPoint(e.x, e.y)){
+                    val event = r.originalEvent
+
+                    val collides = rects
+                        .filter { isEventCollide(it.originalEvent, event) && !it.originalEvent.isAllDay() }
+                        .map(WeekRect::originalEvent)
+
+                    listener?.onWeekEventSelected(collides)
+
+                    playSoundEffect(SoundEffectConstants.CLICK)
+
+                    return true
+                }
+            }
+
+            return true
         }
 
         private fun changeWithEditMode(e: MotionEvent){
@@ -1933,11 +1946,13 @@ class WeekView @JvmOverloads constructor(
         fun onWeekChanged(year: Int, month: Int, date: Int, week: Int) : List<WeekEvent>?
 
         /**
-         * 선택된 이벤트에 대한 데이터를 넘겨준다. Edit 모드가 단일 클릭에서 이뤄지는 경우 호출이 되지 않는다.
+         * 선택된 이벤트에 대한 데이터를 넘겨준다.
+         * 선택된 이벤트 뿐만 아니라 해당 스케쥴에 가려진 모든 이벤트들을 전달해준다.
+         * 리턴하는 맨 첫번째 인덱스는 선택된 이벤트이다.
          *
-         * @param event UI 에서 사용하는 이벤트 데이터
+         * @param event UI 에서 사용하는 이벤트 모델
          */
-        fun onWeekEventSelected(event: WeekEvent)
+        fun onWeekEventSelected(event: List<WeekEvent>)
 
         /**
          * 비어있는 이벤트에 대해서 추가하고자 할 때 사용된다. 해당 메소드는 기본적으로 클릭으로 실행된다.

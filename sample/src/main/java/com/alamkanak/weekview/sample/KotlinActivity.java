@@ -3,7 +3,6 @@ package com.alamkanak.weekview.sample;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -20,7 +19,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-import kr.lavalse.kweekview.extension.EContext;
 import kr.lavalse.kweekview.extension.ELocalDateTime;
 import kr.lavalse.kweekview.model.WeekEvent;
 import kr.lavalse.kweekview.WeekView;
@@ -36,6 +34,7 @@ public class KotlinActivity extends AppCompatActivity {
         WeekView view = ((WeekView) findViewById(R.id.weekView));
 
         view.setOnWeekChangeListener(new WeekView.OnWeekViewListener() {
+
             @Override
             public void onErrorEventListener(@Nullable Throwable e) {
                 e.printStackTrace();
@@ -48,6 +47,8 @@ public class KotlinActivity extends AppCompatActivity {
 
             @Override
             public void onCurrentWeekChanged(int year, int month, int date, int week) {
+                System.out.println("hasPrevious: "+view.canMovePrevious());
+
                 LocalDate startLd = LocalDate.of(year, month, date);
                 LocalDate endLd = startLd.plusDays(6);
 
@@ -66,17 +67,20 @@ public class KotlinActivity extends AppCompatActivity {
                 System.out.println(String.format("Be Batched: %s - %s", _start, _end));
             }
 
-            @Override
-            public void onWeekEventSelected(@NotNull WeekEvent event) {
-                if(event.isAllDay()){
-                    Toast.makeText(KotlinActivity.this, "여기는 종일 부분", Toast.LENGTH_SHORT).show();
+            public void onWeekEventSelected(@NotNull List<? extends WeekEvent> event) {
+                System.out.println(event);
+                /*
+                    if(event.isAllDay()){
+                        Toast.makeText(KotlinActivity.this, "여기는 종일 부분", Toast.LENGTH_SHORT).show();
 
-                    return;
-                }
+                        return;
+                    }
 
-                Toast.makeText(KotlinActivity.this, event.getTitle(), Toast.LENGTH_SHORT).show();
+                    Toast.makeText(KotlinActivity.this, event.getTitle(), Toast.LENGTH_SHORT).show();
 
-                selected = event;
+                    selected = event;
+                */
+
             }
 
             @Nullable
@@ -353,7 +357,6 @@ public class KotlinActivity extends AppCompatActivity {
             case R.id.action_prev: {
                 WeekView view = (WeekView) findViewById(R.id.weekView);
 
-                System.out.println("hasPrevious: "+view.canMovePrevious());
                 view.moveToPrev();
             }
             break;
