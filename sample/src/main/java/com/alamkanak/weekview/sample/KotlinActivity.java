@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Random;
 
 import kr.lavalse.kweekview.extension.EContext;
+import kr.lavalse.kweekview.extension.ELocalDateTime;
 import kr.lavalse.kweekview.model.WeekEvent;
 import kr.lavalse.kweekview.WeekView;
 
@@ -59,7 +60,10 @@ public class KotlinActivity extends AppCompatActivity {
 
             @Override
             public void onEmptyEventWillBeAdded(long start, long end) {
-                System.out.println(String.format("Be Batched: %d - %d", start, end));
+                LocalDateTime _start = ELocalDateTime.INSTANCE.toLocalDateTime(start);
+                LocalDateTime _end = ELocalDateTime.INSTANCE.toLocalDateTime(end);
+
+                System.out.println(String.format("Be Batched: %s - %s", _start, _end));
             }
 
             @Override
@@ -105,7 +109,7 @@ public class KotlinActivity extends AppCompatActivity {
 
                 startAt
                     = LocalDateTime.of(
-                            LocalDate.of(year, 5, 25),
+                            LocalDate.of(year, 6,1),
                             LocalTime.of(17, 20, 0));
                 //.with(TemporalAdjusters.nextOrSame(DayOfWeek.WEDNESDAY));
 
@@ -123,7 +127,7 @@ public class KotlinActivity extends AppCompatActivity {
 
                 startAt
                     = LocalDateTime.of(
-                        LocalDate.of(year, 5, 25),
+                        LocalDate.of(year, 6, 1),
                         LocalTime.of(14, 0, 0)
                     );
                         //.with(TemporalAdjusters.nextOrSame(DayOfWeek.WEDNESDAY));
@@ -279,7 +283,7 @@ public class KotlinActivity extends AppCompatActivity {
                 a1.setStartAndEndDate(startAt, endAt, true);
                 events.add(a1);
 
-                // TUES ~ WEDS
+                // TUES ~ THUR
                 WeekEvent a2 = new WeekEvent("AF005"+date);
                 a2.setBackgroundColor("#3bc9db");
                 a2.setTitle("배포 A");
@@ -287,7 +291,7 @@ public class KotlinActivity extends AppCompatActivity {
                 startAt = LocalDateTime.of(LocalDate.of(year, month, date), LocalTime.of(0, 0, 0))
                         .with(TemporalAdjusters.nextOrSame(DayOfWeek.TUESDAY));
                 endAt = LocalDateTime.of(startAt.toLocalDate(), startAt.toLocalTime())
-                        .plusDays(1);
+                        .plusDays(2);
 
                 a2.setStartAndEndDate(startAt, endAt, true);
                 events.add(a2);
@@ -302,7 +306,7 @@ public class KotlinActivity extends AppCompatActivity {
                 a3.setStartAndEndDate(startAt, endAt, true);
                 events.add(a3);
 
-                // SAT ~ MON
+                // SAT ~ SUN
                 WeekEvent a4 = new WeekEvent("AF007"+date);
                 a4.setTitle("서버점검");
                 a4.setBackgroundColor("#FA0032");
@@ -310,19 +314,19 @@ public class KotlinActivity extends AppCompatActivity {
                 startAt = LocalDateTime.of(LocalDate.of(year, month, date), LocalTime.of(0, 0, 0))
                         .with(TemporalAdjusters.nextOrSame(DayOfWeek.SATURDAY));
                 endAt = LocalDateTime.of(startAt.toLocalDate(), startAt.toLocalTime())
-                        .plusDays(2);
+                        .plusDays(1);
 
                 a4.setStartAndEndDate(startAt, endAt, true);
                 events.add(a4);
 
-                // SUN ~ THUR
+                // SUN ~ TUES
                 WeekEvent a5 = new WeekEvent("AF008"+date);
                 a5.setTitle("이벤트기간");
                 a5.setBackgroundColor("#ADFF32");
                 startAt = LocalDateTime.of(LocalDate.of(year, month, date), LocalTime.of(0, 0, 0))
                         .with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY));
                 endAt = LocalDateTime.of(startAt.toLocalDate(), startAt.toLocalTime())
-                        .plusDays(4);
+                        .plusDays(2);
                 a5.setStartAndEndDate(startAt, endAt, true);
                 events.add(a5);
 
