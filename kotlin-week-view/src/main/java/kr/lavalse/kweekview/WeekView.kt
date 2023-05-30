@@ -5,14 +5,12 @@ import android.animation.AnimatorSet
 import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.*
-import android.graphics.drawable.ColorDrawable
 import android.text.*
 import android.text.style.StyleSpan
 import android.util.AttributeSet
 import android.view.*
 import android.view.animation.DecelerateInterpolator
 import android.widget.OverScroller
-import android.widget.PopupWindow
 import androidx.core.view.GestureDetectorCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.postDelayed
@@ -276,6 +274,7 @@ class WeekView @JvmOverloads constructor(
 
     private var editEvent : DummyWeekEvent? = null
 
+    private var doScrollBack = false
     private var scroller = OverScroller(context, DecelerateInterpolator())
     private var detector: GestureDetectorCompat
     private val gestureListener = object : GestureDetector.SimpleOnGestureListener() {
@@ -1475,6 +1474,8 @@ class WeekView @JvmOverloads constructor(
         super.computeScroll()
 
         if(scroller.isFinished){
+            if(doScrollBack) doScrollBack = false
+
             // 스크롤 이벤트가 일어났는데 페이지가 이동되는 경우라면,
             if(PageMove.doPageMove(statePageMove)){
                 // 이벤트에 맞게 데이터를 다시 호출할 수 있도록 한다.
@@ -1503,13 +1504,23 @@ class WeekView @JvmOverloads constructor(
 
                 scrollToNearestOrigin()
             }else if(scroller.computeScrollOffset()){
-                if(!canMovePastDate && scroller.currX > 0){
-                    origin.set(0f, scroller.currY.toFloat())
+                // 오늘 이전 데이터로 갈 수 없는데 스크롤로 이동 하려고 하는 경우에는
+                // 이동을 막고 x좌표를 0으로 맞춘다.
+                // 되돌아 갈 때, x좌표로 인해 해당 로직을 타지 않도록 doScrollBack 으로 막아준다.
+                // 그렇지 않으면 애니메이션을 하지 않고 무한 루프임.
+                if(!canMovePastDate && scroller.currX > 0 && !doScrollBack){
+                    doScrollBack = true
 
-                    scrollToNearestOrigin()
-                }else{
-                    origin.set(scroller.currX.toFloat(), scroller.currY.toFloat())
+                    scroller.run {
+                        springBack(currX, currY, 0, 0, Int.MIN_VALUE, Int.MAX_VALUE)
+                    }
+
+                    ViewCompat.postInvalidateOnAnimation(this)
+
+                    return
                 }
+
+                origin.set(scroller.currX.toFloat(), scroller.currY.toFloat())
 
                 ViewCompat.postInvalidateOnAnimation(this)
             }
