@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Path
+import android.graphics.RectF
 import android.util.TypedValue
 import java.time.*
 import java.time.format.DateTimeFormatter
@@ -48,4 +49,8 @@ object EContext {
 
     fun Context.toDP(value: Float) = applyDimension(TypedValue.COMPLEX_UNIT_DIP, value)
     fun Context.toDP(value: Int) = toDP(value.toFloat())
+}
+
+object ECanvas {
+    fun Canvas.drawRoundRect(rect: RectF, radius: Float, paint: Paint) = drawRoundRect(rect, radius, radius, paint)
 }

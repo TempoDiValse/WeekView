@@ -15,6 +15,7 @@ import androidx.core.view.GestureDetectorCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.postDelayed
 import kr.lavalse.kweekview.exception.*
+import kr.lavalse.kweekview.extension.ECanvas.drawRoundRect
 import kr.lavalse.kweekview.extension.EContext.toDP
 import kr.lavalse.kweekview.extension.EContext.toSP
 import kr.lavalse.kweekview.extension.ELocalDateTime.isBeforeDay
@@ -87,8 +88,11 @@ class WeekView @JvmOverloads constructor(
 
         private const val DEFAULT_EVENT_CORNER_RADIUS = 3f
         private const val DEFAULT_EVENT_BLOCK_ROUND_CEIL = 10f
-        private const val DEFAULT_EVENT_BLOCK_PADDING = 1f
+        private const val DEFAULT_EVENT_BLOCK_PADDING = 0f
+        private const val DEFAULT_EVENT_BLOCK_STROKE_WIDTH = 1f
         private const val DEFAULT_EVENT_BLOCK_EMPTY_BACKGROUND = 0xFFF7F8FC
+        //private const val DEFAULT_EVENT_BLOCK_EMPTY_BACKGROUND = 0xFF666666
+        private const val DEFAULT_EVENT_BLOCK_EMPTY_PADDING = 1f
         private const val DEFAULT_EVENT_TEXT_HORIZONTAL_PADDING = 6f
         private const val DEFAULT_EVENT_TEXT_VERTICAL_PADDING = 8f
         private const val DEFAULT_EVENT_TEXT_COLOR = 0xFF111111
@@ -154,7 +158,13 @@ class WeekView @JvmOverloads constructor(
     private var eventTextVerticalPadding = 0f
     private var eventCornerRadius = 0f
     private var eventBlockPadding = 0f
+    private var eventBlockStrokeWidth = 1f
+    private var eventBackgroundPadding = 0f
     private var painter = Paint(Paint.ANTI_ALIAS_FLAG)
+    private var outlinePainter = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.WHITE
+        style = Paint.Style.STROKE
+    }
     private var eventEmptyPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = DEFAULT_EVENT_BLOCK_EMPTY_BACKGROUND.toInt()
     }
@@ -444,6 +454,7 @@ class WeekView @JvmOverloads constructor(
 
                     val collides = rects
                         .filter { isEventCollide(it.originalEvent, event) && !it.originalEvent.isAllDay() }
+                        .distinctBy { it.originalEvent.id }
                         .map(WeekRect::originalEvent)
 
                     listener?.onWeekEventSelected(collides)
@@ -568,6 +579,8 @@ class WeekView @JvmOverloads constructor(
                 context.toDP(DEFAULT_EVENT_CORNER_RADIUS))
             eventBlockPadding = getDimension(R.styleable.WeekView_eventBlockPadding,
                 context.toDP(DEFAULT_EVENT_BLOCK_PADDING))
+            eventBackgroundPadding = context.toDP(DEFAULT_EVENT_BLOCK_EMPTY_PADDING)
+            eventBlockStrokeWidth = context.toDP(DEFAULT_EVENT_BLOCK_STROKE_WIDTH)
             eventTextHorizontalPadding = getDimension(R.styleable.WeekView_eventTextHorizontalPadding,
                 context.toDP(DEFAULT_EVENT_TEXT_HORIZONTAL_PADDING))
             eventTextVerticalPadding = getDimension(R.styleable.WeekView_eventTextHorizontalPadding,
@@ -648,6 +661,7 @@ class WeekView @JvmOverloads constructor(
             p.color = Color.BLACK
         }
 
+        outlinePainter.strokeWidth = eventBlockStrokeWidth
         eventTextPaint.let { p ->
             p.typeface = Typeface.DEFAULT
             p.textSize = eventTextSize.toFloat()
@@ -795,7 +809,6 @@ class WeekView @JvmOverloads constructor(
     }
 
     private fun sortAndSplitSchedules(events: List<WeekEvent>) : List<WeekEvent> {
-        events.distinctBy { it.id }
         sortEvent(events)
 
         return events
@@ -1160,10 +1173,10 @@ class WeekView @JvmOverloads constructor(
 
                 if(t < height)
                     drawRoundRect(
-                        l + eventBlockPadding,
-                        t + eventBlockPadding,
-                        r - eventBlockPadding,
-                        b - eventBlockPadding,
+                        l + eventBackgroundPadding,
+                        t + eventBackgroundPadding,
+                        r - eventBackgroundPadding,
+                        b - eventBackgroundPadding,
                         eventCornerRadius, eventCornerRadius, eventEmptyPaint)
             }
 
@@ -1189,7 +1202,7 @@ class WeekView @JvmOverloads constructor(
                 val r = l + (rect.right * widthPerDay)
                 val b = offsetY + ((hourHeight * 24 * rect.bottom) / 1440)
 
-                rect.setAbsoluteRect(l, t, r, b, eventBlockPadding)
+                rect.setAbsoluteRect(l, t + eventBlockStrokeWidth, r, b - eventBlockStrokeWidth, eventBlockPadding)
 
                 drawEventArea(this, rect, type)
             }
@@ -1265,8 +1278,8 @@ class WeekView @JvmOverloads constructor(
 
             clipRect(timelineWidth, dayOfWeekHeight, width, headerHeight)
 
-            val (l, t) = offsetX to dayOfWeekHeight + lineStrokeWidth * 1f
-            val (r, b) = l + widthPerDay to t + allDayAreaHeight
+            val (l, t) = offsetX + eventBlockStrokeWidth to dayOfWeekHeight + lineStrokeWidth * 1f
+            val (r, b) = l + widthPerDay - eventBlockStrokeWidth to t + allDayAreaHeight
 
             rect.setAbsoluteRect(l, t, r, b, eventBlockPadding)
 
@@ -1285,7 +1298,9 @@ class WeekView @JvmOverloads constructor(
         }
 
         with(canvas){
-            drawRoundRect(absRect, eventCornerRadius, eventCornerRadius, painter)
+            drawRoundRect(absRect, eventCornerRadius, painter)
+            drawRoundRect(absRect, eventCornerRadius, outlinePainter)
+
             drawEventText(canvas, rect)
         }
     }
@@ -1319,13 +1334,13 @@ class WeekView @JvmOverloads constructor(
                     }
 
                     val l = offsetX + (rect.left * widthPerDay) + highlightStrokeWidth
-                    val t = offsetY + ((hourHeight * 24 * rect.top) / 1440) + lineStrokeWidth
+                    val t = offsetY + ((hourHeight * 24 * rect.top) / 1440) + lineStrokeWidth + eventBlockStrokeWidth
                     val r = l + (rect.right * widthPerDay) - highlightStrokeWidth
-                    val b = offsetY + ((hourHeight * 24 * rect.bottom) / 1440) - lineStrokeWidth
+                    val b = offsetY + ((hourHeight * 24 * rect.bottom) / 1440) - lineStrokeWidth - eventBlockStrokeWidth
 
                     rect.setAbsoluteRect(l, t, r, b, eventBlockPadding)
-                    highlightRect.left = l
-                    highlightRect.right = r
+                    highlightRect.left = l - eventBlockStrokeWidth
+                    highlightRect.right = r + eventBlockStrokeWidth
 
                     save()
 
