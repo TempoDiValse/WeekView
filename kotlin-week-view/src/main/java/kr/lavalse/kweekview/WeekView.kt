@@ -281,7 +281,6 @@ class WeekView @JvmOverloads constructor(
     private var needTimeNow = false
 
     private var listener : OnWeekViewListener? = null
-
     private var editEvent : DummyWeekEvent? = null
 
     private var doScrollBack = false
@@ -519,6 +518,9 @@ class WeekView @JvmOverloads constructor(
     private var statePageMove = PageMove.NONE
 
     private var animator : Animator? = null
+    private var locale : Locale = Locale.getDefault()
+    var dayOfWeekLocale : Locale get() = locale
+        set(value){ locale = value }
 
     init {
         setBackgroundColor(Color.WHITE)
@@ -1120,7 +1122,7 @@ class WeekView @JvmOverloads constructor(
             val (x2, y2) = offsetX + (widthPerDay / 2) to dayOfWeekHeight - dayOfWeekPadding.bottom - ((dayOfWeekTodayBackgroundSize / 2f) - (dayOfWeekTextNumberHeight / 2f))
 
             val isFirstDayOfMonth = YearMonth.from(date).atDay(1).isSameDay(date.toLocalDate())
-            val dayOfWeekText = date.toText("E")
+            val dayOfWeekText = date.toText("E", locale)
             val dayOfWeekTextNumber = date.toText(if(!isFirstDayOfMonth) DEFAULT_FORMAT_DAY_OF_WEEK else "M.d")
 
             val textPaint = when(date.dayOfWeek){

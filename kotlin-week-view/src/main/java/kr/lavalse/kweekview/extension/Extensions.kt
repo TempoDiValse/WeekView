@@ -19,7 +19,7 @@ object ELocalDateTime {
     fun LocalDateTime.isSameDay(with: LocalDateTime) = isSameYear(with) && dayOfYear == with.dayOfYear
     fun LocalDateTime.isBeforeDay(with: LocalDateTime) = isSameYear(with) && dayOfYear > with.dayOfYear
     fun LocalDateTime.isBeforeWeek(with: LocalDateTime) = isSameYear(with) && weekOfYear() > with.weekOfYear()
-    fun LocalDateTime.toText(pattern: String = "yyyy/MM/dd"): String = format(DateTimeFormatter.ofPattern(pattern))
+    fun LocalDateTime.toText(pattern: String = "yyyy/MM/dd", locale: Locale = Locale.getDefault()): String = format(DateTimeFormatter.ofPattern(pattern, locale))
     fun LocalDateTime.weekOfYear() = get(WeekFields.of(Locale.getDefault()).weekOfWeekBasedYear())
     fun LocalDateTime.toTimeMillis() = atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
     fun LocalDateTime.withDayOfWeek(dayOfWeek: DayOfWeek) = with(TemporalAdjusters.previousOrSame(dayOfWeek))

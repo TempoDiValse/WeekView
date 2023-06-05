@@ -17,6 +17,7 @@ import java.time.LocalTime;
 import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Random;
 
 import kr.lavalse.kweekview.extension.ELocalDateTime;
@@ -32,6 +33,7 @@ public class KotlinActivity extends AppCompatActivity {
         setContentView(R.layout.activity_kotlin);
 
         WeekView view = ((WeekView) findViewById(R.id.weekView));
+        view.setDayOfWeekLocale(Locale.JAPAN);
 
         view.setOnWeekChangeListener(new WeekView.OnWeekViewListener() {
 
