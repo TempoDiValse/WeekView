@@ -21,13 +21,31 @@ open class WeekEvent: Cloneable {
     val difference get() = abs(endTimeInMillis - startTimeInMillis)
     val days get() = (difference / (24 * 60 * 60 * 1000f)).roundToInt()
 
+    private var _oEvent : WeekEvent? = null
+    var originalEvent : WeekEvent
+        get() = _oEvent ?: this
+        set(value) { _oEvent = value }
+
     open var title: String = ""
 
     private var isAllDay: Boolean = false
 
     private var _color: Int = Color.BLACK
-
     val backgroundColor get() = _color
+
+    constructor(id: String, start: LocalDateTime, end: LocalDateTime, isAllDay: Boolean){
+        this.id = id
+
+        setStartAndEndDate(start, end, isAllDay)
+    }
+    constructor(id: String, start: LocalDateTime, end: LocalDateTime) : this(id, start, end, false)
+
+    /**
+     * ID 값은 모델 이벤트와 매칭 될 수 있도록 꼭 입력을 해준다.
+     *
+     * @param id 모델 이벤트의 ID
+     */
+    constructor(id: String) : this(id, LocalDateTime.now(), LocalDateTime.now()){ this.id = id }
 
     fun isAllDay() = isAllDay
     fun setBackgroundColor(code: String){ this._color = Color.parseColor(code) }
@@ -54,17 +72,13 @@ open class WeekEvent: Cloneable {
         this.endAt = _end
     }
 
-    override fun equals(other: Any?): Boolean = other?.let { it as WeekEvent
-        it.id == id
-            && it.startTimeInMillis == startTimeInMillis
-            && it.endTimeInMillis == endTimeInMillis
-    } ?: false
+    override fun equals(other: Any?): Boolean = other?.let { it as WeekEvent; it.id == id } ?: false
 
     override fun toString(): String {
         val start = startAt?.toText("yyyy/MM/dd HH:mm") ?: "NULL"
         val end = endAt?.toText("yyyy/MM/dd HH:mm") ?: "NULL"
 
-        return if(!isAllDay()) "($id) $start ~ $end" else "($id-A) $start ~ $end"
+        return if(!isAllDay()) "\"($id) $start ~ $end \'$title\'\"" else "\"($id-A) $start ~ $end \'$title\'\""
     }
 
     public override fun clone(): WeekEvent

@@ -2,26 +2,51 @@
 <resources>
     <declare-styleable name="WeekView">
         <attr name="android:textSize"></attr>
-        <attr name="cornerRadius" format="dimension"></attr>
+        <attr name="canMovePastDate" format="boolean"></attr>
+        <attr name="startDayOfWeek" format="enum">
+            <enum name="today" value="-1" />
+            <enum name="monday" value="0" />
+            <enum name="tuesday" value="1" />
+            <enum name="wednesday" value="2" />
+            <enum name="thursday" value="3" />
+            <enum name="friday" value="4" />
+            <enum name="saturday" value="5" />
+            <enum name="sunday" value="6" />
+        </attr>
 
         <!-- Event -->
-        <attr name="eventTitlePadding" format="dimension"></attr>
+        <attr name="eventTextHorizontalPadding" format="dimension"></attr>
+        <attr name="eventTextVerticalPadding" format="dimension"></attr>
         <attr name="eventTextColor" format="color"></attr>
         <attr name="eventTextSize" format="dimension"></attr>
-        <attr name="editEventText" format="string"></attr>
-        <attr name="editEventColor" format="color"></attr>
+        <attr name="eventCornerRadius" format="dimension"></attr>
+        <attr name="eventBlockPadding" format="dimension"></attr>
         <attr name="pastEventColor" format="color"></attr>
 
+        <attr name="editEventText" format="string"></attr>
+        <attr name="editEventColor" format="color"></attr>
+        <attr name="editEventStrokeColor" format="color"></attr>
+        <attr name="editEventStrokeWidth" format="dimension"></attr>
+        <attr name="editEventShadowColor" format="color"></attr>
+
         <!-- Separator -->
-        <attr name="gridSeparatorColor" format="color"></attr>
-        <attr name="gridSeparatorStrokeWidth" format="dimension"></attr>
+        <attr name="lineColor" format="color"></attr>
+        <attr name="lineAllDayColor" format="color"></attr>
+        <attr name="lineStrokeWidth" format="dimension"></attr>
 
         <!-- dayOfWeek -->
         <attr name="dayOfWeekHeight" format="dimension"></attr>
-        <attr name="dayOfWeekVerticalPadding" format="dimension"></attr>
+        <attr name="dayOfWeekTopPadding" format="dimension"></attr>
+        <attr name="dayOfWeekBottomPadding" format="dimension"></attr>
+        <attr name="dayOfWeekTextSpace" format="dimension"></attr>
+        <attr name="dayOfWeekTextNumberSize" format="dimension"></attr>
+        <attr name="dayOfWeekTextNumberColor" format="dimension"></attr>
+
         <attr name="dayOfWeekTextSize" format="dimension"></attr>
         <attr name="dayOfWeekTextColor" format="color"></attr>
         <attr name="dayOfWeekTodayTextColor" format="color"></attr>
+        <attr name="dayOfWeekTodayBackgroundColor" format="color"></attr>
+        <attr name="dayOfWeekTodayBackgroundSize" format="dimension"></attr>
         <attr name="dayOfWeekSundayTextColor" format="color"></attr>
         <attr name="dayOfWeekSaturdayTextColor" format="color"></attr>
 
@@ -30,13 +55,19 @@
         <attr name="hourMinHeight" format="dimension"></attr>
         <attr name="hourMaxHeight" format="dimension"></attr>
         <attr name="timelineTextSize" format="dimension"></attr>
-        <attr name="timelineHorizontalPadding" format="dimension"></attr>
+        <attr name="timelineTextColor" format="color"></attr>
+        <attr name="timelineLeftPadding" format="dimension"></attr>
+        <attr name="timelineRightPadding" format="dimension"></attr>
         <attr name="timeNowColor" format="color"></attr>
         <attr name="timeNowStrokeWidth" format="dimension"></attr>
+        <attr name="timelineAllDayTextColor" format="color"></attr>
+        <attr name="timelineAllDayEventText" format="string"></attr>
+        <attr name="timelineAllDayEventTextSize" format="dimension"></attr>
+
+        <!-- Time Now -->
+        <attr name="needTimeNow" format="boolean"></attr>
 
         <!-- Allday -->
-        <attr name="allDayEventText" format="string"></attr>
-        <attr name="allDayEventTextSize" format="dimension"></attr>
         <attr name="allDayAreaHeight" format="dimension"></attr>
 
         <!-- Day -->

@@ -3,37 +3,16 @@ package kr.lavalse.kweekview.model
 import android.graphics.Rect
 import android.graphics.RectF
 
-class WeekRect : RectF {
-    companion object {
-        const val TYPE_SINGLE = -1
-        const val TYPE_FRONT = 0
-        const val TYPE_CENTER = 1
-        const val TYPE_REAR = 2
-    }
+class WeekRect(left: Float, top: Float, right: Float, bottom: Float, event: WeekEvent)
+    : RectF(left, top, right, bottom) {
 
-    private var _event: WeekEvent
-    private var _origin: WeekEvent
-    private var _type: Int = TYPE_SINGLE
+    private var _event: WeekEvent = event
 
     private val absRect : RectF = RectF()
     val absoluteRect get() = absRect
 
-    constructor(left: Float, top: Float, right: Float, bottom: Float, event: WeekEvent, origin: WeekEvent): super(left, top, right, bottom){
-        this._event = event
-        this._origin = origin
-    }
-
-    constructor(left: Float, top: Float, right: Float, bottom: Float, event: WeekEvent)
-        : this(left, top, right, bottom, event, event)
-
     val event: WeekEvent get() = _event
-    val originalEvent: WeekEvent get() = _origin
-    var rectType
-        get() = _type
-        set(value) {
-            _type = if(!arrayOf(TYPE_SINGLE, TYPE_FRONT, TYPE_CENTER, TYPE_REAR).contains(value)) TYPE_SINGLE
-                    else value
-        }
+    val originalEvent: WeekEvent get() = _event.originalEvent
 
     val startAt get() = event.startAt!!
     val endAt get() = event.endAt!!
@@ -44,8 +23,8 @@ class WeekRect : RectF {
 
     val backgroundColor get() = event.backgroundColor
 
-    fun setAbsoluteRect(l: Float, t: Float, r: Float, b: Float){
-        absRect.set(l, t, r, b)
+    fun setAbsoluteRect(l: Float, t: Float, r: Float, b: Float, padding: Float){
+        absRect.set(l + padding, t + padding, r - padding, b - padding)
     }
 
     fun containsTouchPoint(x: Float, y: Float) = absoluteRect.contains(x, y)

@@ -3,6 +3,26 @@
     xmlns:tools="http://schemas.android.com/tools"
     tools:context=".MyActivity" >
 
+    <item android:id="@+id/action_prev"
+        android:title="PREV"
+        app:showAsAction="ifRoom" />
+    <item android:id="@+id/action_next"
+        android:title="NEXT"
+        app:showAsAction="ifRoom" />
+    <item android:id="@+id/action_scroll_to"
+        android:title="Scroll to 6AM" />
+    <item android:id="@+id/action_today"
+        android:title="Today" />
+    <item android:id="@+id/action_prepare"
+        android:title="Prepare" />
+    <item android:id="@+id/action_dismiss"
+        android:title="Dismiss"/>
+    <item android:id="@+id/action_add"
+        android:title="Add" />
+    <item android:id="@+id/action_remove"
+        android:title="Remove" />
+    <item android:id="@+id/action_move_random"
+        android:title="RandomMove" />
     <!--
     <item android:id="@+id/action_today"
         android:title="@string/action_today"
