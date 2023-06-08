@@ -58,14 +58,14 @@
         <attr name="timelineTextColor" format="color"></attr>
         <attr name="timelineLeftPadding" format="dimension"></attr>
         <attr name="timelineRightPadding" format="dimension"></attr>
-        <attr name="timeNowColor" format="color"></attr>
-        <attr name="timeNowStrokeWidth" format="dimension"></attr>
         <attr name="timelineAllDayTextColor" format="color"></attr>
         <attr name="timelineAllDayEventText" format="string"></attr>
         <attr name="timelineAllDayEventTextSize" format="dimension"></attr>
 
         <!-- Time Now -->
         <attr name="needTimeNow" format="boolean"></attr>
+        <attr name="timeNowColor" format="color"></attr>
+        <attr name="timeNowStrokeWidth" format="dimension"></attr>
 
         <!-- Allday -->
         <attr name="allDayAreaHeight" format="dimension"></attr>
