@@ -48,7 +48,8 @@ public class KotlinActivity extends AppCompatActivity {
 
             @Override
             public void onCurrentWeekChanged(int year, int month, int date, int week) {
-                System.out.println("hasPrevious: "+view.canMovePrevious());
+                //System.out.println("hasPrevious: "+view.canMovePrevious());
+                System.out.println(String.format("Current: %d-%02d-%02d", year, month, date));
 
                 LocalDate startLd = LocalDate.of(year, month, date);
                 LocalDate endLd = startLd.plusDays(6);
