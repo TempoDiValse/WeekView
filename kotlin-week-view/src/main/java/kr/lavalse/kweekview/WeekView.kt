@@ -1128,9 +1128,13 @@ class WeekView @JvmOverloads constructor(
             val (x1, y1) = offsetX + (widthPerDay / 2) to (dayOfWeekPadding.top + dayOfWeekTextHeight) * 1f
             val (x2, y2) = offsetX + (widthPerDay / 2) to dayOfWeekHeight - dayOfWeekPadding.bottom - ((dayOfWeekTodayBackgroundSize / 2f) - (dayOfWeekTextNumberHeight / 2f))
 
-            val isFirstDayOfMonth = YearMonth.from(date).atDay(1).isSameDay(date.toLocalDate())
+            val firstDayOfMonth = YearMonth.from(date).atDay(1)
+
+            val isFirstDayOfMonth = firstDayOfMonth.isSameDay(date.toLocalDate())
+            val isFirstVisibleDate = current.toLocalDate() == firstDayOfMonth
+
             val dayOfWeekText = date.toText("E", locale)
-            val dayOfWeekTextNumber = date.toText(if(!isFirstDayOfMonth) DEFAULT_FORMAT_DAY_OF_WEEK else "M.d")
+            val dayOfWeekTextNumber = date.toText(if(!isFirstDayOfMonth || isFirstVisibleDate) DEFAULT_FORMAT_DAY_OF_WEEK else "M.d")
 
             val textPaint = when(date.dayOfWeek){
                 DayOfWeek.SUNDAY -> dayOfWeekSundayTextPaint
